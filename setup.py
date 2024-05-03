@@ -4,7 +4,7 @@ setup(
     name="fetch",
     version="0.2.0",
     packages=["fetch"],
-    scripts=["bin/predict.py", "bin/train.py"],
+    scripts=["bin/predict.py", "bin/train.py", "bin/candcsvmaker.py"],
     package_dir={"fetch": "fetch"},
     package_data={"fetch": ["models/model_list.csv", "models/*/*"]},
     url="https://github.com/devanshkv/fetch",
