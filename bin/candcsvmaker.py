@@ -1,4 +1,4 @@
-#!/opt/apps/miniconda3/envs/fetch/bin/python
+#!/usr/bin/env python3
 
 import glob
 import pandas as pd
