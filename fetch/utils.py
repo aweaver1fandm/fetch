@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 from keras.models import Model
 from keras.models import model_from_json
+from keras import layers
+from keras import ops
 from keras.optimizers import Adam
 from keras.utils import get_file
 
