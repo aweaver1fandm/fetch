@@ -6,8 +6,8 @@ import os
 import string
 
 import pandas as pd
-from tensorflow.keras.callbacks import EarlyStopping, CSVLogger, ModelCheckpoint
-from tensorflow.keras.models import Model
+from keras.callbacks import EarlyStopping, CSVLogger, ModelCheckpoint
+from keras.models import Model
 from sklearn.model_selection import train_test_split
 
 from fetch.data_sequence import DataGenerator

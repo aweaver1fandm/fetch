@@ -7,10 +7,10 @@ import string
 
 import numpy as np
 import pandas as pd
-from tensorflow.keras.models import Model
-from tensorflow.keras.models import model_from_json
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.utils import get_file
+from keras.models import Model
+from keras.models import model_from_json
+from keras.optimizers import Adam
+from keras.utils import get_file
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 PATH_TO_WEIGHTS = "http://psrpop.phys.wvu.edu/download.php?val="

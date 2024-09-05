@@ -97,8 +97,8 @@ if __name__ == "__main__":
             batch_size=args.batch_size,
         )
 
-        # get's get predicting
-        probs = model.predict_generator(
+        # Let's get predicting
+        probs = model.predict(
             generator=cand_datagen,
             verbose=1,
             use_multiprocessing=use_multiprocessing,
