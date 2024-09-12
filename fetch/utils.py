@@ -91,7 +91,8 @@ def get_model(model_idx):
 
     # Read the model from the json
     with open(model_json, "r") as j:
-        model = model_from_json(j.read())
+        with keras.saving.CustomObjectScope({"Functional": keras.src.models.functional.Functional}):
+            model = model_from_json(j.read())
 
     # get the model weights, if not present download them.
     model_list = pd.read_csv(f"{path}/models/model_list.csv")
