@@ -95,16 +95,12 @@ if __name__ == "__main__":
             shuffle=False,
             noise=False,
             batch_size=args.batch_size,
+            use_multiprocessing=use_multiprocessing,
+            workers=args.nproc,
         )
 
         # Let's get predicting
-        probs = model.predict(
-            generator=cand_datagen,
-            verbose=1,
-            use_multiprocessing=use_multiprocessing,
-            workers=args.nproc,
-            steps=len(cand_datagen),
-        )
+        probs = model.predict(cand_datagen, verbose=1, steps=len(cand_datagen))
 
         # Save results
         results_dict = {}

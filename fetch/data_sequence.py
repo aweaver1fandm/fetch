@@ -13,7 +13,7 @@ os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 logger = logging.getLogger(__name__)
 
 
-class DataGenerator(keras.utils.Sequence):
+class DataGenerator(keras.utils.PyDataset):
     def __init__(
         self,
         list_IDs,
@@ -27,6 +27,7 @@ class DataGenerator(keras.utils.Sequence):
         noise=False,
         noise_mean=0.0,
         noise_std=1.0,
+        **kwargs,
     ):
         """
 
@@ -53,6 +54,8 @@ class DataGenerator(keras.utils.Sequence):
         :param noise_std: standard deviation of gaussian noise
         :type noise_std: float
         """
+        super().__init__(**kwargs)
+
         self.ft_dim = ft_dim
         self.dt_dim = dt_dim
         self.batch_size = batch_size
