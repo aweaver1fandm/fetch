@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python
 
 import argparse
 import logging
@@ -6,9 +6,11 @@ import os
 import string
 
 import pandas as pd
+from tensorflow.keras.callbacks import EarlyStopping, CSVLogger, ModelCheckpoint
+from tensorflow.keras.models import Model
 from sklearn.model_selection import train_test_split
 
-from fetch.pulsar_data import PulsarData
+from fetch.data_sequence import DataGenerator
 from fetch.utils import get_model
 from fetch.utils import ready_for_train
 
@@ -16,46 +18,66 @@ logger = logging.getLogger(__name__)
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
-def train(dataloader, model, loss_fn, optimizer):
 
-    size = len(dataloader.dataset)
-    # Set the model to training mode - important for batch normalization and dropout layers
-    # Unnecessary in this situation but added for best practices
-    model.train()
-    for batch, (X, y) in enumerate(dataloader):
-        # Compute prediction and loss
-        pred = model(X)
-        loss = loss_fn(pred, y)
+def train(model, epochs, patience, output_path, nproc, train_obj, val_obj):
+    """
 
-        # Backpropagation
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
+    :param model: model to train (must be compiled)
+    :type model: Model
+    :param epochs: max number of epochs to train.
+    :type epochs: int
+    :param patience: Stop after these many layers if val. loss doesn't decrease
+    :type patience: int
+    :param output_path: paths to save weights and logs
+    :type output_path: str
+    :param nproc: number of processors for training
+    :type nproc: int
+    :param train_obj: DataGenerator training object for training
+    :type train_obj: DataGenerator
+    :param val_obj: DataGenerator training object for validation
+    :type val_obj: DataGenerator
+    :return: model, history object
+    """
+    if nproc == 1:
+        use_multiprocessing = False
+    else:
+        use_multiprocessing = True
 
-        if batch % 100 == 0:
-            loss, current = loss.item(), batch * batch_size + len(X)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+    # Callbacks for training and validation
+    ES = EarlyStopping(
+        monitor="val_loss",
+        min_delta=1e-3,
+        patience=patience,
+        verbose=1,
+        mode="min",
+        restore_best_weights=True,
+    )
+    CK = ModelCheckpoint(
+        output_path + "weights.h5",
+        monitor="val_loss",
+        verbose=1,
+        save_best_only=True,
+        save_weights_only=False,
+        mode="min",
+    )
+    csv_name = output_path + "training_log.csv"
+    LO = CSVLogger(csv_name, append=False)
 
-def test(dataloader, model, loss_fn):
+    callbacks = [ES, CK, LO]
 
-    # Set the model to evaluation mode - important for batch normalization and dropout layers
-    # Unnecessary in this situation but added for best practices
-    model.eval()
-    size = len(dataloader.dataset)
-    num_batches = len(dataloader)
-    test_loss, correct = 0, 0
+    train_history = model.fit_generator(
+        generator=train_obj,
+        validation_data=val_obj,
+        epochs=epochs,
+        use_multiprocessing=use_multiprocessing,
+        max_queue_size=10,
+        workers=nproc,
+        shuffle=True,
+        callbacks=callbacks,
+        verbose=1,
+    )
+    return model, train_history
 
-    # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
-    # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
-    with torch.no_grad():
-        for X, y in dataloader:
-            pred = model(X)
-            test_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
-
-    test_loss /= num_batches
-    correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -153,20 +175,18 @@ if __name__ == "__main__":
     train_df, val_df = train_test_split(
         data_df, test_size=(1 - args.val_split), random_state=1993
     )
-    train_data = PulsarData(
+    train_data_generator = DataGenerator(
         list_IDs=list(train_df["h5"]),
         labels=list(train_df["label"]),
         noise=True,
+        shuffle=True,
     )
-    train_dataloader = DataLoader(train_data, batch_size=32,shuffle=True)
-
-    test_data = PulsarData(
+    validate_data_generator = DataGenerator(
         list_IDs=list(val_df["h5"]),
         labels=list(val_df["label"]),
         noise=False,
         shuffle=False,
     )
-    test_dataloader = DataLoader(test_data, batch_size=32,shuffle=False)
 
     model_to_train = get_model(args.model)
 

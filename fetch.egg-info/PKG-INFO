@@ -1,0 +1,22 @@
+Metadata-Version: 2.1
+Name: fetch
+Version: 0.2.0
+Summary: FETCH (Fast Extragalactic Transient Candidate Hunter)
+Home-page: https://github.com/devanshkv/fetch
+Author: ['Devansh Agarwal', 'Kshitij Aggarwal']
+Author-email: ['devansh.kv@gmail.com', 'ka0064@mix.wvu.edu']
+License: GNU General Public License v3.0
+Platform: UNKNOWN
+Classifier: Natural Language :: English
+Classifier: Intended Audience :: Science/Research
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Topic :: Scientific/Engineering :: Astronomy
+License-File: LICENSE
+
+UNKNOWN
+

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python
 
 import argparse
 import glob
@@ -9,9 +9,7 @@ import string
 import numpy as np
 import pandas as pd
 
-from torch.utils.data import DataLoader
-
-from fetch.pulsar_data import PulsarData
+from fetch.data_sequence import DataGenerator
 from fetch.utils import get_model
 
 logger = logging.getLogger(__name__)
