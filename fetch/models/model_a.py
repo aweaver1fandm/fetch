@@ -6,8 +6,3 @@ import torch.nn as nn
 
 # Use GPU if available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-
-# growth rate
-k = 32
-compression_factor = 0.5
