@@ -1,0 +1,78 @@
+Model definition file: ft_DenseNet121_2_dt_Xception_13_256.h5
+Model: "model_3"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to    
+==================================================================================================
+ data_freq_time (InputLayer  [(None, 256, 256, 1)]        0         []    
+ )    
+    
+ data_dm_time (InputLayer)   [(None, 256, 256, 1)]        0         []    
+    
+ conv2d_1__0 (Conv2D)        (None, 255, 255, 3)          15        ['data_freq_time[0][0]']    
+    
+ conv2d_2__1 (Conv2D)        (None, 255, 255, 3)          15        ['data_dm_time[0][0]']    
+    
+ densenet121__0 (Functional  (None, 1024)                 7037504   ['conv2d_1__0[0][0]']    
+ )    
+    
+ xception__1 (Functional)    (None, 2048)                 2086148   ['conv2d_2__1[0][0]']    
+                                                          0    
+    
+ batch_normalization_5 (Bat  (None, 1024)                 4096      ['densenet121__0[0][0]']    
+ chNormalization)    
+    
+ batch_normalization_6 (Bat  (None, 2048)                 8192      ['xception__1[0][0]']    
+ chNormalization)    
+    
+ dropout_1 (Dropout)         (None, 1024)                 0         ['batch_normalization_5[0][0]'
+                                                                    ]    
+    
+ dropout_2 (Dropout)         (None, 2048)                 0         ['batch_normalization_6[0][0]'
+                                                                    ]    
+    
+ dense_1 (Dense)             (None, 256)                  262400    ['dropout_1[0][0]']    
+    
+ dense_2 (Dense)             (None, 256)                  524544    ['dropout_2[0][0]']    
+    
+ multiply_1 (Multiply)       (None, 256)                  0         ['dense_1[0][0]',    
+                                                                     'dense_2[0][0]']    
+    
+ batch_normalization_7 (Bat  (None, 256)                  1024      ['multiply_1[0][0]']    
+ chNormalization)    
+    
+ activation_1 (Activation)   (None, 256)                  0         ['batch_normalization_7[0][0]'
+                                                                    ]    
+    
+ dense_3 (Dense)             (None, 2)                    514       ['activation_1[0][0]']    
+    
+==================================================================================================
+Total params: 28699784 (109.48 MB) 
+Trainable params: 8160888 (31.13 MB) 
+Non-trainable params: 20538896 (78.35 MB) 
+__________________________________________________________________________________________________
+
+Layer Information:
+
+The Conv2D layers use RELU, bias initializer Zeros, dilation rate (1,1) filters 3,
+kernel initializer VarianceScaling(scale: 1, mode: "fan_avg", distribution: "uniform", seed: null)
+
+The densenet121 node and xception node are complex beasts
+
+The first two (paired) BatchNormalization layers have axis -1, beta_initializer Zeros(), center true, epsilon 0.001
+gamma initializer Ones(), mommentum 0.99, moving_mean_i??? Zeros(), moving variance??? Ones(), scale true
+
+The (paired) Dropout layers have rate 0.3
+
+The (paired) Dense layers have activation linear bias initializer Zeros(), 
+kernel initializer VarianceScaling(scale: 1, mode: "fan_avg", distribution: "uniform", seed: null),
+units 256 use_bias true
+
+The Multiply layer has no parameters, only inputs and outputs
+
+The single  Batchnormalization layer has same parameters as the pair above
+
+The single activation layer has RELU activation
+
+The single Dense layer has Softmax activation, bias initializer Zeros(),
+kernel initializer VarianceScaling(scale: 1, mode: "fan_avg", distribution: "uniform", seed: null),
+units 2, use_bias true
