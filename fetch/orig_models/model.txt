@@ -1,0 +1,477 @@
+*****************************************************
+Model definition file: ft_DenseNet121_2_dt_Xception_13_256.h5
+Model: "model_3"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ data_freq_time (InputLayer  [(None, 256, 256, 1)]        0         []                            
+ )                                                                                                
+                                                                                                  
+ data_dm_time (InputLayer)   [(None, 256, 256, 1)]        0         []                            
+                                                                                                  
+ conv2d_1__0 (Conv2D)        (None, 255, 255, 3)          15        ['data_freq_time[0][0]']      
+                                                                                                  
+ conv2d_2__1 (Conv2D)        (None, 255, 255, 3)          15        ['data_dm_time[0][0]']        
+                                                                                                  
+ densenet121__0 (Functional  (None, 1024)                 7037504   ['conv2d_1__0[0][0]']         
+ )                                                                                                
+                                                                                                  
+ xception__1 (Functional)    (None, 2048)                 2086148   ['conv2d_2__1[0][0]']         
+                                                          0                                       
+                                                                                                  
+ batch_normalization_5 (Bat  (None, 1024)                 4096      ['densenet121__0[0][0]']      
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_6 (Bat  (None, 2048)                 8192      ['xception__1[0][0]']         
+ chNormalization)                                                                                 
+                                                                                                  
+ dropout_1 (Dropout)         (None, 1024)                 0         ['batch_normalization_5[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dropout_2 (Dropout)         (None, 2048)                 0         ['batch_normalization_6[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_1 (Dense)             (None, 256)                  262400    ['dropout_1[0][0]']           
+                                                                                                  
+ dense_2 (Dense)             (None, 256)                  524544    ['dropout_2[0][0]']           
+                                                                                                  
+ multiply_1 (Multiply)       (None, 256)                  0         ['dense_1[0][0]',             
+                                                                     'dense_2[0][0]']             
+                                                                                                  
+ batch_normalization_7 (Bat  (None, 256)                  1024      ['multiply_1[0][0]']          
+ chNormalization)                                                                                 
+                                                                                                  
+ activation_1 (Activation)   (None, 256)                  0         ['batch_normalization_7[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_3 (Dense)             (None, 2)                    514       ['activation_1[0][0]']        
+                                                                                                  
+==================================================================================================
+Total params: 28699784 (109.48 MB)
+Trainable params: 8160888 (31.13 MB)
+Non-trainable params: 20538896 (78.35 MB)
+__________________________________________________________________________________________________
+*****************************************************
+Model definition file: ft_DenseNet121_2_dt_InceptionV3_18_64.h5
+Model: "model_3"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ data_freq_time (InputLayer  [(None, 256, 256, 1)]        0         []                            
+ )                                                                                                
+                                                                                                  
+ data_dm_time (InputLayer)   [(None, 256, 256, 1)]        0         []                            
+                                                                                                  
+ conv2d_1__0 (Conv2D)        (None, 255, 255, 3)          15        ['data_freq_time[0][0]']      
+                                                                                                  
+ conv2d_2__1 (Conv2D)        (None, 255, 255, 3)          15        ['data_dm_time[0][0]']        
+                                                                                                  
+ densenet121__0 (Functional  (None, 1024)                 7037504   ['conv2d_1__0[0][0]']         
+ )                                                                                                
+                                                                                                  
+ inception_v3__1 (Functiona  (None, 2048)                 2180278   ['conv2d_2__1[0][0]']         
+ l)                                                       4                                       
+                                                                                                  
+ batch_normalization_95 (Ba  (None, 1024)                 4096      ['densenet121__0[0][0]']      
+ tchNormalization)                                                                                
+                                                                                                  
+ batch_normalization_96 (Ba  (None, 2048)                 8192      ['inception_v3__1[0][0]']     
+ tchNormalization)                                                                                
+                                                                                                  
+ dropout_1 (Dropout)         (None, 1024)                 0         ['batch_normalization_95[0][0]
+                                                                    ']                            
+                                                                                                  
+ dropout_2 (Dropout)         (None, 2048)                 0         ['batch_normalization_96[0][0]
+                                                                    ']                            
+                                                                                                  
+ dense_1 (Dense)             (None, 64)                   65600     ['dropout_1[0][0]']           
+                                                                                                  
+ dense_2 (Dense)             (None, 64)                   131136    ['dropout_2[0][0]']           
+                                                                                                  
+ multiply_1 (Multiply)       (None, 64)                   0         ['dense_1[0][0]',             
+                                                                     'dense_2[0][0]']             
+                                                                                                  
+ batch_normalization_97 (Ba  (None, 64)                   256       ['multiply_1[0][0]']          
+ tchNormalization)                                                                                
+                                                                                                  
+ activation_95 (Activation)  (None, 64)                   0         ['batch_normalization_97[0][0]
+                                                                    ']                            
+                                                                                                  
+ dense_3 (Dense)             (None, 2)                    130       ['activation_95[0][0]']       
+                                                                                                  
+==================================================================================================
+Total params: 29049728 (110.82 MB)
+Trainable params: 6315616 (24.09 MB)
+Non-trainable params: 22734112 (86.72 MB)
+__________________________________________________________________________________________________
+*****************************************************
+Model definition file: ft_DenseNet201_4_dt_Xception_13_32.h5
+Model: "model_3"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ data_freq_time (InputLayer  [(None, 256, 256, 1)]        0         []                            
+ )                                                                                                
+                                                                                                  
+ data_dm_time (InputLayer)   [(None, 256, 256, 1)]        0         []                            
+                                                                                                  
+ conv2d_1__0 (Conv2D)        (None, 255, 255, 3)          15        ['data_freq_time[0][0]']      
+                                                                                                  
+ conv2d_2__1 (Conv2D)        (None, 255, 255, 3)          15        ['data_dm_time[0][0]']        
+                                                                                                  
+ densenet201__0 (Functional  (None, 1920)                 1832198   ['conv2d_1__0[0][0]']         
+ )                                                        4                                       
+                                                                                                  
+ xception__1 (Functional)    (None, 2048)                 2086148   ['conv2d_2__1[0][0]']         
+                                                          0                                       
+                                                                                                  
+ batch_normalization_5 (Bat  (None, 1920)                 7680      ['densenet201__0[0][0]']      
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_6 (Bat  (None, 2048)                 8192      ['xception__1[0][0]']         
+ chNormalization)                                                                                 
+                                                                                                  
+ dropout_1 (Dropout)         (None, 1920)                 0         ['batch_normalization_5[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dropout_2 (Dropout)         (None, 2048)                 0         ['batch_normalization_6[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_1 (Dense)             (None, 32)                   61472     ['dropout_1[0][0]']           
+                                                                                                  
+ dense_2 (Dense)             (None, 32)                   65568     ['dropout_2[0][0]']           
+                                                                                                  
+ multiply_1 (Multiply)       (None, 32)                   0         ['dense_1[0][0]',             
+                                                                     'dense_2[0][0]']             
+                                                                                                  
+ batch_normalization_7 (Bat  (None, 32)                   128       ['multiply_1[0][0]']          
+ chNormalization)                                                                                 
+                                                                                                  
+ activation_1 (Activation)   (None, 32)                   0         ['batch_normalization_7[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_3 (Dense)             (None, 2)                    66        ['activation_1[0][0]']        
+                                                                                                  
+==================================================================================================
+Total params: 39326600 (150.02 MB)
+Trainable params: 7745592 (29.55 MB)
+Non-trainable params: 31581008 (120.47 MB)
+__________________________________________________________________________________________________
+*****************************************************
+Model definition file: ft_DenseNet121_2_dt_VGG16_1_32.h5
+Model: "model_3"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ data_freq_time (InputLayer  [(None, 256, 256, 1)]        0         []                            
+ )                                                                                                
+                                                                                                  
+ data_dm_time (InputLayer)   [(None, 256, 256, 1)]        0         []                            
+                                                                                                  
+ conv2d_1__0 (Conv2D)        (None, 255, 255, 3)          15        ['data_freq_time[0][0]']      
+                                                                                                  
+ conv2d_2__1 (Conv2D)        (None, 255, 255, 3)          15        ['data_dm_time[0][0]']        
+                                                                                                  
+ densenet121__0 (Functional  (None, 1024)                 7037504   ['conv2d_1__0[0][0]']         
+ )                                                                                                
+                                                                                                  
+ vgg16__1 (Functional)       (None, 512)                  1471468   ['conv2d_2__1[0][0]']         
+                                                          8                                       
+                                                                                                  
+ batch_normalization_1 (Bat  (None, 1024)                 4096      ['densenet121__0[0][0]']      
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_2 (Bat  (None, 512)                  2048      ['vgg16__1[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ dropout_1 (Dropout)         (None, 1024)                 0         ['batch_normalization_1[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dropout_2 (Dropout)         (None, 512)                  0         ['batch_normalization_2[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_1 (Dense)             (None, 32)                   32800     ['dropout_1[0][0]']           
+                                                                                                  
+ dense_2 (Dense)             (None, 32)                   16416     ['dropout_2[0][0]']           
+                                                                                                  
+ multiply_1 (Multiply)       (None, 32)                   0         ['dense_1[0][0]',             
+                                                                     'dense_2[0][0]']             
+                                                                                                  
+ batch_normalization_3 (Bat  (None, 32)                   128       ['multiply_1[0][0]']          
+ chNormalization)                                                                                 
+                                                                                                  
+ activation_1 (Activation)   (None, 32)                   0         ['batch_normalization_3[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_3 (Dense)             (None, 2)                    66        ['activation_1[0][0]']        
+                                                                                                  
+==================================================================================================
+Total params: 21807776 (83.19 MB)
+Trainable params: 2451168 (9.35 MB)
+Non-trainable params: 19356608 (73.84 MB)
+__________________________________________________________________________________________________
+*****************************************************
+Model definition file: ft_VGG19_3_dt_VGG16_1_128.h5
+Model: "model_3"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ data_freq_time (InputLayer  [(None, 256, 256, 1)]        0         []                            
+ )                                                                                                
+                                                                                                  
+ data_dm_time (InputLayer)   [(None, 256, 256, 1)]        0         []                            
+                                                                                                  
+ conv2d_1__0 (Conv2D)        (None, 255, 255, 3)          15        ['data_freq_time[0][0]']      
+                                                                                                  
+ conv2d_2__1 (Conv2D)        (None, 255, 255, 3)          15        ['data_dm_time[0][0]']        
+                                                                                                  
+ vgg19__0 (Functional)       (None, 512)                  2002438   ['conv2d_1__0[0][0]']         
+                                                          4                                       
+                                                                                                  
+ vgg16__1 (Functional)       (None, 512)                  1471468   ['conv2d_2__1[0][0]']         
+                                                          8                                       
+                                                                                                  
+ batch_normalization_1 (Bat  (None, 512)                  2048      ['vgg19__0[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_2 (Bat  (None, 512)                  2048      ['vgg16__1[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ dropout_1 (Dropout)         (None, 512)                  0         ['batch_normalization_1[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dropout_2 (Dropout)         (None, 512)                  0         ['batch_normalization_2[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_1 (Dense)             (None, 128)                  65664     ['dropout_1[0][0]']           
+                                                                                                  
+ dense_2 (Dense)             (None, 128)                  65664     ['dropout_2[0][0]']           
+                                                                                                  
+ multiply_1 (Multiply)       (None, 128)                  0         ['dense_1[0][0]',             
+                                                                     'dense_2[0][0]']             
+                                                                                                  
+ batch_normalization_3 (Bat  (None, 128)                  512       ['multiply_1[0][0]']          
+ chNormalization)                                                                                 
+                                                                                                  
+ activation_1 (Activation)   (None, 128)                  0         ['batch_normalization_3[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_3 (Dense)             (None, 2)                    258       ['activation_1[0][0]']        
+                                                                                                  
+==================================================================================================
+Total params: 34875296 (133.04 MB)
+Trainable params: 9573152 (36.52 MB)
+Non-trainable params: 25302144 (96.52 MB)
+__________________________________________________________________________________________________
+*****************************************************
+Model definition file: ft_DenseNet169_6_dt_VGG16_1_512.h5
+Model: "model_3"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ data_freq_time (InputLayer  [(None, 256, 256, 1)]        0         []                            
+ )                                                                                                
+                                                                                                  
+ data_dm_time (InputLayer)   [(None, 256, 256, 1)]        0         []                            
+                                                                                                  
+ conv2d_1__0 (Conv2D)        (None, 255, 255, 3)          15        ['data_freq_time[0][0]']      
+                                                                                                  
+ conv2d_2__1 (Conv2D)        (None, 255, 255, 3)          15        ['data_dm_time[0][0]']        
+                                                                                                  
+ densenet169__0 (Functional  (None, 1664)                 1264288   ['conv2d_1__0[0][0]']         
+ )                                                        0                                       
+                                                                                                  
+ vgg16__1 (Functional)       (None, 512)                  1471468   ['conv2d_2__1[0][0]']         
+                                                          8                                       
+                                                                                                  
+ batch_normalization_1 (Bat  (None, 1664)                 6656      ['densenet169__0[0][0]']      
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_2 (Bat  (None, 512)                  2048      ['vgg16__1[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ dropout_1 (Dropout)         (None, 1664)                 0         ['batch_normalization_1[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dropout_2 (Dropout)         (None, 512)                  0         ['batch_normalization_2[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_1 (Dense)             (None, 512)                  852480    ['dropout_1[0][0]']           
+                                                                                                  
+ dense_2 (Dense)             (None, 512)                  262656    ['dropout_2[0][0]']           
+                                                                                                  
+ multiply_1 (Multiply)       (None, 512)                  0         ['dense_1[0][0]',             
+                                                                     'dense_2[0][0]']             
+                                                                                                  
+ batch_normalization_3 (Bat  (None, 512)                  2048      ['multiply_1[0][0]']          
+ chNormalization)                                                                                 
+                                                                                                  
+ activation_1 (Activation)   (None, 512)                  0         ['batch_normalization_3[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_3 (Dense)             (None, 2)                    1026      ['activation_1[0][0]']        
+                                                                                                  
+==================================================================================================
+Total params: 28484512 (108.66 MB)
+Trainable params: 3770848 (14.38 MB)
+Non-trainable params: 24713664 (94.28 MB)
+__________________________________________________________________________________________________
+*****************************************************
+Model definition file: ft_VGG19_3_dt_Xception_13_128.h5
+Model: "model_3"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ data_freq_time (InputLayer  [(None, 256, 256, 1)]        0         []                            
+ )                                                                                                
+                                                                                                  
+ data_dm_time (InputLayer)   [(None, 256, 256, 1)]        0         []                            
+                                                                                                  
+ conv2d_1__0 (Conv2D)        (None, 255, 255, 3)          15        ['data_freq_time[0][0]']      
+                                                                                                  
+ conv2d_2__1 (Conv2D)        (None, 255, 255, 3)          15        ['data_dm_time[0][0]']        
+                                                                                                  
+ vgg19__0 (Functional)       (None, 512)                  2002438   ['conv2d_1__0[0][0]']         
+                                                          4                                       
+                                                                                                  
+ xception__1 (Functional)    (None, 2048)                 2086148   ['conv2d_2__1[0][0]']         
+                                                          0                                       
+                                                                                                  
+ batch_normalization_5 (Bat  (None, 512)                  2048      ['vgg19__0[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_6 (Bat  (None, 2048)                 8192      ['xception__1[0][0]']         
+ chNormalization)                                                                                 
+                                                                                                  
+ dropout_1 (Dropout)         (None, 512)                  0         ['batch_normalization_5[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dropout_2 (Dropout)         (None, 2048)                 0         ['batch_normalization_6[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_1 (Dense)             (None, 128)                  65664     ['dropout_1[0][0]']           
+                                                                                                  
+ dense_2 (Dense)             (None, 128)                  262272    ['dropout_2[0][0]']           
+                                                                                                  
+ multiply_1 (Multiply)       (None, 128)                  0         ['dense_1[0][0]',             
+                                                                     'dense_2[0][0]']             
+                                                                                                  
+ batch_normalization_7 (Bat  (None, 128)                  512       ['multiply_1[0][0]']          
+ chNormalization)                                                                                 
+                                                                                                  
+ activation_1 (Activation)   (None, 128)                  0         ['batch_normalization_7[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_3 (Dense)             (None, 2)                    258       ['activation_1[0][0]']        
+                                                                                                  
+==================================================================================================
+Total params: 41224840 (157.26 MB)
+Trainable params: 14740856 (56.23 MB)
+Non-trainable params: 26483984 (101.03 MB)
+__________________________________________________________________________________________________
+*****************************************************
+Model definition file: ft_DenseNet169_6_dt_Xception_13_112.h5
+Model: "model_3"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ data_freq_time (InputLayer  [(None, 256, 256, 1)]        0         []                            
+ )                                                                                                
+                                                                                                  
+ data_dm_time (InputLayer)   [(None, 256, 256, 1)]        0         []                            
+                                                                                                  
+ conv2d_1__0 (Conv2D)        (None, 255, 255, 3)          15        ['data_freq_time[0][0]']      
+                                                                                                  
+ conv2d_2__1 (Conv2D)        (None, 255, 255, 3)          15        ['data_dm_time[0][0]']        
+                                                                                                  
+ densenet169__0 (Functional  (None, 1664)                 1264288   ['conv2d_1__0[0][0]']         
+ )                                                        0                                       
+                                                                                                  
+ xception__1 (Functional)    (None, 2048)                 2086148   ['conv2d_2__1[0][0]']         
+                                                          0                                       
+                                                                                                  
+ batch_normalization_5 (Bat  (None, 1664)                 6656      ['densenet169__0[0][0]']      
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_6 (Bat  (None, 2048)                 8192      ['xception__1[0][0]']         
+ chNormalization)                                                                                 
+                                                                                                  
+ dropout_1 (Dropout)         (None, 1664)                 0         ['batch_normalization_5[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dropout_2 (Dropout)         (None, 2048)                 0         ['batch_normalization_6[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_1 (Dense)             (None, 112)                  186480    ['dropout_1[0][0]']           
+                                                                                                  
+ dense_2 (Dense)             (None, 112)                  229488    ['dropout_2[0][0]']           
+                                                                                                  
+ multiply_1 (Multiply)       (None, 112)                  0         ['dense_1[0][0]',             
+                                                                     'dense_2[0][0]']             
+                                                                                                  
+ batch_normalization_7 (Bat  (None, 112)                  448       ['multiply_1[0][0]']          
+ chNormalization)                                                                                 
+                                                                                                  
+ activation_1 (Activation)   (None, 112)                  0         ['batch_normalization_7[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_3 (Dense)             (None, 2)                    226       ['activation_1[0][0]']        
+                                                                                                  
+==================================================================================================
+Total params: 33935880 (129.46 MB)
+Trainable params: 8041176 (30.67 MB)
+Non-trainable params: 25894704 (98.78 MB)
+__________________________________________________________________________________________________
+*****************************************************
+Model definition file: ft_DenseNet201_4_dt_VGG16_1_32.h5
+Model: "model_3"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ data_freq_time (InputLayer  [(None, 256, 256, 1)]        0         []                            
+ )                                                                                                
+                                                                                                  
+ data_dm_time (InputLayer)   [(None, 256, 256, 1)]        0         []                            
+                                                                                                  
+ conv2d_1__0 (Conv2D)        (None, 255, 255, 3)          15        ['data_freq_time[0][0]']      
+                                                                                                  
+ conv2d_2__1 (Conv2D)        (None, 255, 255, 3)          15        ['data_dm_time[0][0]']        
+                                                                                                  
+ densenet201__0 (Functional  (None, 1920)                 1832198   ['conv2d_1__0[0][0]']         
+ )                                                        4                                       
+                                                                                                  
+ vgg16__1 (Functional)       (None, 512)                  1471468   ['conv2d_2__1[0][0]']         
+                                                          8                                       
+                                                                                                  
+ batch_normalization_1 (Bat  (None, 1920)                 7680      ['densenet201__0[0][0]']      
+ chNormalization)                                                                                 
+                                                                                                  
+ batch_normalization_2 (Bat  (None, 512)                  2048      ['vgg16__1[0][0]']            
+ chNormalization)                                                                                 
+                                                                                                  
+ dropout_1 (Dropout)         (None, 1920)                 0         ['batch_normalization_1[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dropout_2 (Dropout)         (None, 512)                  0         ['batch_normalization_2[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_1 (Dense)             (None, 32)                   61472     ['dropout_1[0][0]']           
+                                                                                                  
+ dense_2 (Dense)             (None, 32)                   16416     ['dropout_2[0][0]']           
+                                                                                                  
+ multiply_1 (Multiply)       (None, 32)                   0         ['dense_1[0][0]',             
+                                                                     'dense_2[0][0]']             
+                                                                                                  
+ batch_normalization_3 (Bat  (None, 32)                   128       ['multiply_1[0][0]']          
+ chNormalization)                                                                                 
+                                                                                                  
+ activation_1 (Activation)   (None, 32)                   0         ['batch_normalization_3[0][0]'
+                                                                    ]                             
+                                                                                                  
+ dense_3 (Dense)             (None, 2)                    66        ['activation_1[0][0]']        
+                                                                                                  
+==================================================================================================
+Total params: 33124512 (126.36 MB)
+Trainable params: 2725344 (10.40 MB)
+Non-trainable params: 30399168 (115.96 MB)
+__________________________________________________________________________________________________
