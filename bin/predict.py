@@ -9,10 +9,9 @@ import string
 import numpy as np
 import pandas as pd
 
+import torch
 from torch.utils.data import DataLoader
-
 from fetch.pulsar_data import PulsarData
-from fetch.utils import get_model
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +41,7 @@ if __name__ == "__main__":
         action='append'
     )
     parser.add_argument(
-        "-b", "--batch_size", help="Batch size for training data", default=8, type=int
+        "-m", "--model", help="Index of the model to train", required=True
     )
     parser.add_argument(
         "-m", "--model", help="Index of the model to train", required=True
@@ -66,19 +65,16 @@ if __name__ == "__main__":
 
     if args.gpu_id >= 0:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
+        torch.device = "gpu"
     else:
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
+        torch.device = "cpu"
 
-    if args.nproc > 1:
-        use_multiprocessing = True
-        logging.info(f"Using multiprocessing with {args.nproc} workers")
-    else:
-        use_multiprocessing = False
-
-    if args.model not in list(string.ascii_lowercase)[:11]:
-        raise ValueError(f"Model only range from a -- j.")
-
-    model = get_model(args.model)
+    # Get the model and set it to eval mode
+    logger.info(f"Getting model {args.model}")
+    path = os.path.split(__file__)[0]
+    model = torch.load(f"{path}/models/model_{args.model}.pth", weights_only=False)
+    model.eval()
     
     for data_dir in args.data_dir:
 
@@ -90,29 +86,42 @@ if __name__ == "__main__":
 
         logging.debug(f"Read {len(cands_to_eval)} candidates")
 
-        # Get the data generator, make sure noise and shuffle are off.
-        cand_datagen = DataGenerator(
+        ''' Note: Wondering if possibly need to use a DataLoader to predict in batches
+            Something like:
+        def predict(model, test_loader):
+            all_preds = []
+            all_preds_raw = []
+            all_labels = []
+
+            for batch in test_loader:
+                batch.x = torch.tensor(batch.x)
+                batch.x = batch.x.reshape((-1, *batch.x.shape[2:]))
+                batch.to(device)  
+                pred = model(torch.tensor(batch.x).float(), 
+                            #batch.edge_attr.float(),
+                            batch.edge_index, 
+                            batch.batch) 
+
+                all_preds.append(np.argmax(pred.cpu().detach().numpy(), axis=1))
+                all_preds_raw.append(torch.sigmoid(pred).cpu().detach().numpy())
+                all_labels.append(batch.y.cpu().detach().numpy())'''
+
+        # Create the input data
+        inputs = PulsarData(
             list_IDs=cands_to_eval,
             labels=[0] * len(cands_to_eval),
-            shuffle=False,
             noise=False,
-            batch_size=args.batch_size,
         )
 
-        # get's get predicting
-        probs = model.predict_generator(
-            generator=cand_datagen,
-            verbose=1,
-            use_multiprocessing=use_multiprocessing,
-            workers=args.nproc,
-            steps=len(cand_datagen),
-        )
+        with torch.no_grad():
+            probs = model(inputs)
 
-        # Save results
+        # Save the results
+        probs = probs.detach().cpu().numpy()
         results_dict = {}
         results_dict["candidate"] = cands_to_eval
         results_dict["probability"] = probs[:, 1]
         results_dict["label"] = np.round(probs[:, 1] >= args.probability)
+
         results_file = data_dir + f"/results_{args.model}.csv"
         pd.DataFrame(results_dict).to_csv(results_file)
-    
