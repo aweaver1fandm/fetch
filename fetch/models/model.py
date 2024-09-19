@@ -4,6 +4,7 @@
 
 import torch
 import torch.nn as nn
+import torchvision.models as models
 import xception as xc
 
 # Use GPU if available
@@ -15,26 +16,36 @@ model_params = {}
 class PulsarModel(nn.Module):
     def __init__(self, model):
         super().__init__()
-        self.flatten = nn.Flatten()
+        densenet121 = models.densenet121()
+
         self.freq_stack = nn.Sequential(
+            nn.Conv2D(in_channels=1, out_channels=3, kernel_size=(2,2), stride=(1,1), padding="valid", dilation=(1,1), bias=True)
+            nn.ReLU()
+            densenet121
+            nn.BatchNorm2d(num_features=1024, eps=0.001, mommentum=0.99)
+            nn.Dropout(p=0.3)
+            nn.Linear(in_features=1024, out_features=256)
         )
 
         self.dm_stack = nn.Sequential(
+            nn.Conv2D(in_channels=1, out_channels=3, kernel_size=(2,2), stride=(1,1), padding="valid", dilation=(1,1), bias=True)
+            nn.ReLU()
 
         )
+        self.bn = nn.BatchNorm2d(num_features=256, eps=.001, momentum=0.99)
+        self.relu = nn.ReLU()
+        self.linear = nn.Linear(in_features=256, out_features=2)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, freq, dm):
-        freq = self.flatten(freq)
-        dm = self.flatten(dm)
+        freq_stack_output = self.freq_stack(freq)
+        dm_stack_output = self.dm_stack(dm)
 
-        freq_stack = self.freq_stack(freq)
-        dm_stack = self.dm_stack(dm)
+        output = torch.mult(freq_stack_output, dm_stack_output)
+        output = self.bn(output)
+        output = self.relu(output)
+        output = self.linear(output)
+        output = self.softmax(output)
 
-        mult_output = torch.mult(freq_stack, dm_stack)
-        bn_output = nn.BatchNorm1d(num_features, eps=.001, momentum=0.99, affine=True, track_running_stats=True)
-        
-        hidden_output = nn.ReLU(bn_output)
-        dense_output = nn.Linear(hidden_output)
-
-        return logits
+        return output
 
