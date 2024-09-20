@@ -90,8 +90,6 @@ class Block(nn.Module):
         x+=skip
         return x
 
-
-
 class Xception(nn.Module):
     """
     Xception optimized for the ImageNet dataset, as specified in
@@ -140,8 +138,6 @@ class Xception(nn.Module):
 
         self.fc = nn.Linear(2048, num_classes)
 
-
-
         #------- init weights --------
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -151,10 +147,6 @@ class Xception(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
         #-----------------------------
-
-
-
-
 
     def forward(self, x):
         x = self.conv1(x)
@@ -191,8 +183,6 @@ class Xception(nn.Module):
         x = self.fc(x)
 
         return x
-
-
 
 def xception(pretrained=False,**kwargs):
     """
