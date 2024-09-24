@@ -104,7 +104,7 @@ class PulsarFreqData(Dataset):
     def __len__(self)-> int:
         """
 
-        :return: Number of files in data set
+        :return: Number of items in data set
         """
         return len(self.list_IDs)
 
@@ -162,47 +162,43 @@ def _data_from_h5(file: str) -> tuple(np.array, np.array, np.array):
     dm data, and the label
     """
 
-    freq_tensor = torch.from_numpy(freq_data)
-    dm_tensor = torch.from_numpy(dm_data)
-
-    print(type(freq_tensor))
-    print(freq_tensor.size())
-    print(type(dm_tensor))
-    print(dm_tensor.size())
-    
-    print(freq_data.shape)
-
-    # Options
-    # data size 2 --> single instance
-    # data size 3 --> depends if last value is 1 then single instance, otherwise first value probably means multiple instances
-    # data size 4 --> multiple instances
     data = h5py.File(file, 'r')
     freq_data = np.array(data["data_freq_time"][:])
     dm_data = np.array(data["data_dm_time"][:])
-    labels = np.array(data["data_labels"][:])
 
     shape = freq_data.shape
+    # Trying to handle different .h5 data situations
+    # Shape of length 4: Multiple observations in a file (e.g., 40000x256x256x1)
+    # Shape of length 3: Two possibilities
+    #                    if last value is 1, then single observation (e.g., 256x256x1)
+    #                    Otherwise assume it's multiple observations (e.g., 500x256x256)
+    # Shape of length 2: Single observation
     if len(shape)  == 4:
         freq_data = np.reshape(freq_data, (shape[0], shape[1], shape[2]))
         dm_data = np.reshape(dm_data, (shape[0], shape[1], shape[2]))
-    elif ((len(freq_data) == 3) and (shape[2] == 1)):
+    elif ((len(shape) == 3) and (shape[2] == 1)):
         freq_data = np.reshape(freq_data, (shape[0], shape[1]))
         dm_data = np.reshape(dm_data, (shape[0], shape[1]))
+    elif len(shape) != 2:
+        # ERROR
+        pass
 
-    with h5py.File(index, "r") as f;
-            data_ft = s.detrend(
-                np.nan_to_num(np.array(f["data_freq_time"], dtype=np.float32).T)
-            )
-            data_ft /= np.std(data_ft)
-            data_ft -= np.median(data_ft)
-            data_dt = np.nan_to_num(
-                np.array(f["data_dm_time"], dtype=np.float32)
-            )
-            data_dt /= np.std(data_dt)
-            data_dt -= np.median(data_dt)
+    # Clean up the data
+    data_ft = s.detrend(np.nan_to_num(np.array(freq_data, dtype=np.float32).T))
+    data_ft /= np.std(data_ft)
+    data_ft -= np.median(data_ft)
+    data_dt = np.nan_to_num(np.array(dm_data, dtype=np.float32))
+    data_dt /= np.std(data_dt)
+    data_dt -= np.median(data_dt)
 
-            ft_dim = np.reshape(data_ft, (*self.ft_dim, self.n_channels))
-            dt_dim = np.reshape(data_dt, (*self.dt_dim, self.n_channels))
-    return freq, dm, labels
+    # Need to handle these reshapes in case of multiple channels
+    # But also handle if more than one data point (e.g., 40000, 256, 256)
+    #ft_dim = np.reshape(data_ft, (*self.ft_dim, self.n_channels))
+    #dt_dim = np.reshape(data_dt, (*self.dt_dim, self.n_channels))
+
+    # Handle the labels (Need to check if the key exists or not)
+    labels = np.array(data["data_labels"][:])
+    
+    return data_dt, data_dt, labels
 
 if __name__ == "__main__":
