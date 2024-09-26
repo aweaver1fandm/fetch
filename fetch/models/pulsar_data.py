@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 import h5py
 
@@ -8,6 +9,9 @@ from torch.utils.data import Dataset
 import numpy as np
 import scipy.signal as s
 
+import glob
+from torch.utils.data import DataLoader
+
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 logger = logging.getLogger(__name__)
 
@@ -15,14 +19,14 @@ class PulsarData(Dataset):
     def __init__(
         self,
         files: list,
-        labels: list,
-        ft_dim=(256, 256): tuple,
-        dt_dim=(256, 256): tuple,
-        n_channels=1: int,
-        n_classes=2: int,
-        noise=False: bool,
-        noise_mean=0.0: float,
-        noise_std=1.0: float,
+        labels: list = [],
+        ft_dim: tuple = (256, 256),
+        dt_dim: tuple = (256, 256),
+        n_channels:int = 1,
+        n_classes: int = 2,
+        noise:bool = False,
+        noise_mean: float = 0.0,
+        noise_std: float = 1.0,
     ) -> None:
         r"""
 
@@ -57,13 +61,19 @@ class PulsarData(Dataset):
         self.noise_std = noise_std
 
         self.num_observations = 0
-        self.ft_data = np.empty((*self.ft_dim))
-        self.dt_data = np.empty((*self.dt_dim))
-        self.labels = []
+        self.ft_data = np.empty((0, *self.ft_dim))
+        self.dt_data = np.empty((0, *self.dt_dim))
+        self.labels = np.empty(0, dtype=int)
+        
+        logger.debug(f"ft data shape {self.ft_data.shape}")
+        logger.debug(f"dt data shape {self.dt_data.shape}")
 
         for f in files:
-            logger.info(f"Processing file {f}")
-            _data_from_h5(f)
+            logger.debug(f"Processing file {f}")
+            self._data_from_h5(f)
+
+        logger.debug(f"After processing files ft data shape {self.ft_data.shape}")
+        logger.debug(f"After processing files dt data shape {self.dt_data.shape}")
 
     def __len__(self)-> int:
         """
@@ -72,15 +82,15 @@ class PulsarData(Dataset):
         """
         return self.num_observations
 
-    def __getitem__(self, index: int)-> tuple(np.array, np.array, int):
+    def __getitem__(self, index: int)-> tuple:
         """
 
         :param index: index
         :return: Specific pulsar data(ft and dt) and label
         """
         
-        ft_data = np.empty((*self.ft_data, self.n_channels))
-        dt_data = np.empty((*self.dt_data, self.n_channels))
+        ft_data = np.empty((*self.ft_dim, self.n_channels))
+        dt_data = np.empty((*self.dt_dim, self.n_channels))
 
         # Do some processing before passing  observation to CNN 
         ft_data = s.detrend(np.nan_to_num(np.array(self.ft_data[index], dtype=np.float32).T))
@@ -88,11 +98,11 @@ class PulsarData(Dataset):
         ft_data -= np.median(ft_data)
         
         dt_data = np.nan_to_num(np.array(self.dt_data[index], dtype=np.float32))
-        dt_datat_data /= np.std(data_dt)
-        dt_data -= np.median(data_dt)
+        dt_data /= np.std(dt_data)
+        dt_data -= np.median(dt_data)
 
-        ft_data = np.reshape(data_ft, (*self.ft_dim, self.n_channels))
-        dt_data = np.reshape(data_dt, (*self.dt_dim, self.n_channels))
+        ft_data = np.reshape(ft_data, (*self.ft_dim, self.n_channels))
+        dt_data = np.reshape(dt_data, (*self.dt_dim, self.n_channels))
 
         """
         if self.noise:
@@ -100,9 +110,9 @@ class PulsarData(Dataset):
                 loc=self.noise_mean, scale=self.noise_std, size=X.shape
             )"""
         
-        return ft_data, dt_data, self.label[index]
+        return ft_data, dt_data, self.labels[index]
 
-    def _data_from_h5(file: str) -> None:
+    def _data_from_h5(self, file: str) -> None:
         r"""
 
         Reads a single .h5 file 
@@ -130,7 +140,7 @@ class PulsarData(Dataset):
         dm_data = np.array(data["data_dm_time"][:])
 
         shape = freq_data.shape
-        logger.info(f"Data shape is {shape}")
+        logger.debug(f"Original data shape is {shape}")
 
         num_observations = 1
         data_dims = (shape[0], shape[1])
@@ -146,29 +156,55 @@ class PulsarData(Dataset):
             num_observations = shape[0]
             data_dims = (shape[1], shape[2])
         elif ((len(shape) == 3) and (shape[2] == 1)):
-            freq_data = np.reshape(freq_data, (shape[0], shape[1]))
-            dm_data = np.reshape(dm_data, (shape[0], shape[1]))
+            freq_data = np.reshape(freq_data, (1, shape[0], shape[1]))
+            dm_data = np.reshape(dm_data, (1, shape[0], shape[1]))
         elif len(shape) == 3:
             num_observations = shape[0]
             data_dims = (shape[1], shape[2])
-        elif len(shape) != 2:
+        elif len(shape) == 2:
+            freq_data = np.reshape(freq_data, (1, shape[0], shape[1]))
+            dm_data = np.reshape(dm_data, (1, shape[0], shape[1]))
+        else:
             logger.error(f"{file} contains one or more observations in an unexpected format...{shape}")
-            sys.exit(1)
+            system.exit(1)
+
+        logger.debug(f"Reshaped data shape is {freq_data.shape}")
 
         # Make sure the data dimensions are good
         if data_dims != self.ft_dim:
             logger.error(f"Data shape {data_dim} does not match expected dimensions {self.ft_dim}")
             sys.exit(1)
 
-        self.ft_data = np.append(self.ft_data, freq_data)
-        self.dt_data = np.append(self.dt_data, dm_data)
+        logger.debug(f"Adding {num_observations} observations to data set")
+        self.ft_data = np.append(self.ft_data, freq_data, axis=0)
+        self.dt_data = np.append(self.dt_data, dm_data, axis=0)
         self.num_observations += num_observations
-        logger.info(f"Adding {num_observations} observations to data set")
+        
 
         # Handle the labels if they exist
         if "data_labels" in data:
-            self.labels = self.labels + data["data_labels"][:]
-            logger.info(f"Input file contains labels")
+            logger.debug(f"Input file contains labels")
+            self.labels = np.append(self.labels, data["data_labels"])
+        else:
+            logger.debug(f"Input file does not contains labels")
+            self.labels = np.append(self.labels, np.empty(num_observations, dtype=int))
 
 if __name__ == "__main__":
-    pass
+
+    logging_format = (
+        "%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s"
+    )
+    logging.basicConfig(level=logging.DEBUG, format=logging_format)
+    
+    sample_files = glob.glob("/data/fetch_data/sample_data/*.h5")
+    data_test = PulsarData(files=sample_files)
+
+    i = 0
+    for obs in data_test:
+        print(f"FT data is {obs[0]}")
+        print(f"DT data is {obs[0]}")
+        print(f"Label data is {obs[2]}")
+        i += 1
+
+        if i == 3:
+            sys.exit(0)
