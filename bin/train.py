@@ -6,21 +6,30 @@ import os
 import string
 
 import pandas as pd
-from sklearn.model_selection import train_test_split
+
+import torch
+from torch import nn
+from torch.utils.data import DataLoader
+from torchvision import datasets
+from torchvision.transforms import ToTensor
 
 from fetch.pulsar_data import PulsarData
-from fetch.utils import get_model
-from fetch.utils import ready_for_train
+from fetch.model import CompleteModel
+
+# Use GPU if available
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 logger = logging.getLogger(__name__)
+LOGGINGFORMAT = (
+        "%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s"
+    )
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 def train(dataloader, model, loss_fn, optimizer):
-
     size = len(dataloader.dataset)
+    
     # Set the model to training mode - important for batch normalization and dropout layers
-    # Unnecessary in this situation but added for best practices
     model.train()
     for batch, (X, y) in enumerate(dataloader):
         # Compute prediction and loss
@@ -39,7 +48,6 @@ def train(dataloader, model, loss_fn, optimizer):
 def test(dataloader, model, loss_fn):
 
     # Set the model to evaluation mode - important for batch normalization and dropout layers
-    # Unnecessary in this situation but added for best practices
     model.eval()
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
@@ -76,38 +84,10 @@ if __name__ == "__main__":
         type=str,
     )
     parser.add_argument(
-        "-b", "--batch_size", help="Batch size for training data", default=8, type=int
+        "-b", "--batch_size", help="Batch size for training data", default=32, type=int
     )
     parser.add_argument(
         "-e", "--epochs", help="Number of epochs for training", default=15, type=int
-    )
-    parser.add_argument(
-        "-p",
-        "--patience",
-        help="Layer patience, stop training if validation loss does not decreate",
-        default=3,
-        type=int,
-    )
-    parser.add_argument(
-        "-nft",
-        "--n_ft_layers",
-        help="Number of layers in FT model to train",
-        default=0,
-        type=int,
-    )
-    parser.add_argument(
-        "-ndt",
-        "--n_dt_layers",
-        help="Number of layers in DT model to train",
-        default=0,
-        type=int,
-    )
-    parser.add_argument(
-        "-nf",
-        "--n_fusion_layers",
-        help="Number of layers to train post FT and DT models",
-        default=1,
-        type=int,
     )
     parser.add_argument(
         "-o",
@@ -117,14 +97,11 @@ if __name__ == "__main__":
         required=True,
     )
     parser.add_argument(
-        "-vs",
-        "--val_split",
-        help="Percent of data to use for validation",
-        type=float,
-        default=0.2,
-    )
-    parser.add_argument(
         "-m", "--model", help="Index of the model to train", required=True, type=str
+    )
+    args = parser.parse_args()
+    parser.add_argument(
+        "-lr", "--learning_rate", help="Training learning rate", default=1e-3, type=float
     )
     args = parser.parse_args()
 
@@ -143,11 +120,10 @@ if __name__ == "__main__":
     if args.gpu_id:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
 
-    if args.n_fusion_layers >= 9:
-        raise ValueError(
-            f"Cannot open {args.n_fusion_layers} for training. Models only have 6 layers after FT and DT models."
-        )
-
+    # Stuff I'll need
+    #model = CNN_3()
+    #criterion = CrossEntropyLoss()
+    #optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3)
     data_df = pd.read_csv(args.data_csv)
 
     train_df, val_df = train_test_split(
@@ -158,7 +134,7 @@ if __name__ == "__main__":
         labels=list(train_df["label"]),
         noise=True,
     )
-    train_dataloader = DataLoader(train_data, batch_size=32,shuffle=True)
+    train_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
 
     test_data = PulsarData(
         list_IDs=list(val_df["h5"]),
@@ -166,23 +142,15 @@ if __name__ == "__main__":
         noise=False,
         shuffle=False,
     )
-    test_dataloader = DataLoader(test_data, batch_size=32,shuffle=False)
+    test_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
 
-    model_to_train = get_model(args.model)
+    model = CompleteModel(args.model)
 
-    model_to_train = ready_for_train(
-        model_to_train,
-        ndt=args.n_dt_layers,
-        nft=args.n_ft_layers,
-        nf=args.n_fusion_layers,
-    )
+    # Setup additional training parameters and train/test
+    loss_fn = CrossEntropyLoss()
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=args.learning_rate)
 
-    trained_model, history = train(
-        model_to_train,
-        epochs=args.epochs,
-        patience=args.patience,
-        output_path=args.output_path,
-        nproc=args.nproc,
-        train_obj=train_data_generator,
-        val_obj=validate_data_generator,
-    )
+    for t in range(args.epochs):
+        print(f"Epoch {t+1}\n-------------------------------")
+        train_loop(train_dataloader, model, loss_fn, optimizer)
+        test_loop(test_dataloader, model, loss_fn)

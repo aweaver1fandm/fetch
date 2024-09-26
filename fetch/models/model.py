@@ -5,21 +5,17 @@ to process the freq and dm data.
               
 1. Process freq data (See _FreqLayer class)
 2. Process dm data (See _DMLayer class)
-3. Combine those results (using multiply)
-4. BatchNormalization
-5. 
+3. Combine results (using multiply) and do additional processing
 """
+import logging
 
 import torch
 import torch.nn as nn
 import torchvision.models as models
-import xception as xc
-
-# Use GPU if available
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#import xception as xc
 
 # Key paramters for the different models
-model_params = {"a": {"freq_cnn":"densenet121", "dm_cnn":"xception", "units":256},
+MODELPARAMS = {"a": {"freq_cnn":"densenet121", "dm_cnn":"xception", "units":256},
                 "b": {"freq_cnn":"densenet121", "dm_cnn":"vgg16", "units":32},
                 "c": {"freq_cnn":"densenet169", "dm_cnn":"xception", "units":112},
                 "d": {"freq_cnn":"densenet201", "dm_cnn":"xception", "units":32},
@@ -31,6 +27,11 @@ model_params = {"a": {"freq_cnn":"densenet121", "dm_cnn":"xception", "units":256
                 "j": {"freq_cnn":"vgg19", "dm_cnn":"inceptionv2", "units":512},
                 "k": {"freq_cnn":"densenet121", "dm_cnn":"inceptionv3", "units":64},
                }
+
+logger = logging.getLogger(__name__)
+LOGGINGFORMAT = (
+        "%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s"
+    )
 
 class _DMBlock(nn.Module):
     def __init__(self, model: string) -> None:
@@ -54,9 +55,10 @@ class _DMBlock(nn.Module):
             self.cnn = torch.hub.load("pytorch/vision", cnn_layer, weights=None)
 
         # Readjust the input size for the model to match our input
-        first_layer = [nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(2,2), stride=(1,1), padding="valid", dilation=(1,1), bias=True),]
-        first_conv_layer.extend(list(model.features))  
-        cnn_layer.features= nn.Sequential(*first_conv_layer)
+        # Not sure if this is needed
+        #first_layer = [nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(2,2), stride=(1,1), padding="valid", dilation=(1,1), bias=True),]
+        #first_conv_layer.extend(list(model.features))  
+        #cnn_layer.features= nn.Sequential(*first_conv_layer)
 
         self.block = nn.Sequential(
             nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(2,2), stride=(1,1), padding="valid", dilation=(1,1), bias=True),
@@ -68,6 +70,7 @@ class _DMBlock(nn.Module):
         )
 
     def forward(self, dm: Tensor) -> Tensor:
+        logger.debug(f"DMBlock forward function processing")
         return self.block(dm)
 
 class _FreqBlock(nn.Module):
@@ -89,9 +92,10 @@ class _FreqBlock(nn.Module):
         units = model_params[model]["units"]
 
         # Readjust the input size for the model to match our input
-        first_layer = [nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(2,2), stride=(1,1), padding="valid", dilation=(1,1), bias=True),]
-        first_conv_layer.extend(list(model.features))  
-        cnn_layer.features= nn.Sequential(*first_conv_layer)
+        # Not sure if this is needed
+        #first_layer = [nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(2,2), stride=(1,1), padding="valid", dilation=(1,1), bias=True),]
+        #first_conv_layer.extend(list(model.features))  
+        #cnn_layer.features= nn.Sequential(*first_conv_layer)
 
         self.cnn = torch.hub.load("pytorch/vision", cnn_layer, weights=None)
         self.block = nn.Sequential(
@@ -104,36 +108,51 @@ class _FreqBlock(nn.Module):
         )
 
     def forward(self, dm: Tensor) -> Tensor:
+        logger.debug(f"FreqBlock forward function processing")
         return self.block(dm)
 
-class _CombineBlock(nn.Module):
+class CompleteModel(nn.Module):
     def __init__(self, model: string) -> None:
-        r"""Adds a processing group to model for the final processing of the
-        data
-
-        The outputs from the _FreqLayer and _DMLayer are combined 
-        and processed in the following steps
-        1. Multiply 
-        2. BatchNorm2D
-        3. ReLU 
-        4. Linear (with Softmax activation)
-
+        r"""Builds the complete model, combining the freq data sub-model
+        with the dm data sub-model and final processing of the combined
+        data is done
         """
         super().__init__()
+
+        logging.basicConfig(level=logging.DEBUG, format=LOGGINGFORMAT)
+        logger.debug(f"Building model {model}")
+        logger.debug(f"Freq CNN is {MODELPARAMS[model]["freq_cnn"]}")
+        logger.debug(f"DM CNN is {MODELPARAMS[model]["dm_cnn"]}")
+
+        # https://discuss.pytorch.org/t/how-to-assemble-two-models-into-one-big-model/157027
+        self.freq_model = _FreqBlock(model)
+        self.dm_model = _DMBlock(model)
+
         units = model_params[model]["units"]
 
         self.mul = nn.mul()
         self.block = nn.Sequential(
             nn.BatchNorm2d(num_features=units, eps=0.001, momentum=0.99),
             nn.ReLU(),
-            nn.Linear(in_features=units,outfeatures=units),
+            nn.Linear(in_features=units, outfeatures=units),
             nn.SoftMax(dim=1)
         )
 
-    def forward(self, freq: Tensor, dm: Tensor) -> Tensor:
-        output = self.mul(freq, dm)
+    def forward(self, freq_input: Tensor, dm_input: Tensor) -> Tensor:
+        logger.debug(f"CompleteModel forward function processing")
+        freq_output = self.freq_model(freq_input)
+        dm_output = self.dm_model(dm_input)
+
+        output = self.mul(freq_output, dm_output)
         return self.block(output)
     
 def getModel(model: str) -> nn.Module:
     pass
 
+if __name__ == "__main__":
+     for model in MODELPARAMS:
+        print(f"Trying to build model {model}")
+        try:
+            model = CompleteModel(model)
+        except:
+            print("Unable to build model")

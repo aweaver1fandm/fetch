@@ -14,6 +14,9 @@ from torch.utils.data import DataLoader
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 logger = logging.getLogger(__name__)
+LOGGINGFORMAT = (
+        "%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s"
+    )
 
 class PulsarData(Dataset):
     def __init__(
@@ -92,7 +95,7 @@ class PulsarData(Dataset):
         ft_data = np.empty((*self.ft_dim, self.n_channels))
         dt_data = np.empty((*self.dt_dim, self.n_channels))
 
-        # Do some processing before passing  observation to CNN 
+        # Do some processing before passing observation to CNN 
         ft_data = s.detrend(np.nan_to_num(np.array(self.ft_data[index], dtype=np.float32).T))
         ft_data /= np.std(ft_data)
         ft_data -= np.median(ft_data)
@@ -166,7 +169,7 @@ class PulsarData(Dataset):
             dm_data = np.reshape(dm_data, (1, shape[0], shape[1]))
         else:
             logger.error(f"{file} contains one or more observations in an unexpected format...{shape}")
-            system.exit(1)
+            sys.exit(1)
 
         logger.debug(f"Reshaped data shape is {freq_data.shape}")
 
@@ -180,7 +183,6 @@ class PulsarData(Dataset):
         self.dt_data = np.append(self.dt_data, dm_data, axis=0)
         self.num_observations += num_observations
         
-
         # Handle the labels if they exist
         if "data_labels" in data:
             logger.debug(f"Input file contains labels")
@@ -191,10 +193,7 @@ class PulsarData(Dataset):
 
 if __name__ == "__main__":
 
-    logging_format = (
-        "%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s"
-    )
-    logging.basicConfig(level=logging.DEBUG, format=logging_format)
+    logging.basicConfig(level=logging.DEBUG, format=LOGGINGFORMAT)
     
     sample_files = glob.glob("/data/fetch_data/sample_data/*.h5")
     data_test = PulsarData(files=sample_files)
@@ -202,7 +201,7 @@ if __name__ == "__main__":
     i = 0
     for obs in data_test:
         print(f"FT data is {obs[0]}")
-        print(f"DT data is {obs[0]}")
+        print(f"DT data is {obs[1]}")
         print(f"Label data is {obs[2]}")
         i += 1
 
