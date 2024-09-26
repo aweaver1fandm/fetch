@@ -45,6 +45,7 @@ class PulsarData(Dataset):
         :param noise_std: standard deviation of gaussian noise
         :type noise_std: float
         """
+    
         self.ft_dim = ft_dim
         self.dt_dim = dt_dim
         self.files = files
@@ -67,7 +68,7 @@ class PulsarData(Dataset):
     def __len__(self)-> int:
         """
 
-        :return: Number of items in data set
+        :return: Number of observations in data set
         """
         return self.num_observations
 
@@ -81,6 +82,7 @@ class PulsarData(Dataset):
         ft_data = np.empty((*self.ft_data, self.n_channels))
         dt_data = np.empty((*self.dt_data, self.n_channels))
 
+        # Do some processing before passing  observation to CNN 
         ft_data = s.detrend(np.nan_to_num(np.array(self.ft_data[index], dtype=np.float32).T))
         ft_data /= np.std(ft_data)
         ft_data -= np.median(ft_data)
@@ -118,39 +120,55 @@ class PulsarData(Dataset):
         """
 
         data = h5py.File(file, 'r')
+        if "data_freq_time" not in data:
+            logger.error(f"{file} does not contain data with name data_freq_data")
+            sys.exit(1)
+        if "data_dm_time" not in data:
+            logger.error(f"{file} does not contain data with name data_dm_data")
+            sys.exit(1)
         freq_data = np.array(data["data_freq_time"][:])
         dm_data = np.array(data["data_dm_time"][:])
 
         shape = freq_data.shape
         logger.info(f"Data shape is {shape}")
+
         num_observations = 1
+        data_dims = (shape[0], shape[1])
         # Need to handle different .h5 data situations
         # Shape of length 4: Multiple observations in a file (e.g., 40000x256x256x1)
         # Shape of length 3: Two possibilities
-        #                    if last value is 1, then single observation (e.g., 256x256x1)
+        #                    If last value is 1, then single observation (e.g., 256x256x1)
         #                    Otherwise assume it's multiple observations (e.g., 500x256x256)
         # Shape of length 2: Single observation
         if len(shape) == 4:
             freq_data = np.reshape(freq_data, (shape[0], shape[1], shape[2]))
             dm_data = np.reshape(dm_data, (shape[0], shape[1], shape[2]))
             num_observations = shape[0]
+            data_dims = (shape[1], shape[2])
         elif ((len(shape) == 3) and (shape[2] == 1)):
             freq_data = np.reshape(freq_data, (shape[0], shape[1]))
             dm_data = np.reshape(dm_data, (shape[0], shape[1]))
         elif len(shape) == 3:
             num_observations = shape[0]
+            data_dims = (shape[1], shape[2])
         elif len(shape) != 2:
             logger.error(f"{file} contains one or more observations in an unexpected format...{shape}")
+            sys.exit(1)
+
+        # Make sure the data dimensions are good
+        if data_dims != self.ft_dim:
+            logger.error(f"Data shape {data_dim} does not match expected dimensions {self.ft_dim}")
             sys.exit(1)
 
         self.ft_data = np.append(self.ft_data, freq_data)
         self.dt_data = np.append(self.dt_data, dm_data)
         self.num_observations += num_observations
-        logger.info(f"Number of observations is {num_observations}")
+        logger.info(f"Adding {num_observations} observations to data set")
 
         # Handle the labels if they exist
         if "data_labels" in data:
             self.labels = self.labels + data["data_labels"][:]
-            logger.info(f"Data file contains labels")
+            logger.info(f"Input file contains labels")
 
 if __name__ == "__main__":
+    pass
