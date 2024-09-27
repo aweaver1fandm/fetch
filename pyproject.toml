@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fetch"
+version = "1.0.0"
+authors = [
+  { name="Tony Weaver", email="aweaver1@fandm.edu" },
+]
+description = "PyTorch-based version of FETCH (Fast Extragalactic Transient Candidate Hunter)"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "pandas>=1.2.2",
+    "torch>=2.3.0",
+    "numpy>=1.19.5",
+    "h5py>=3.1.0",
+    "scipy>=1.6.0",
+]
+license = {file = "LICENSE"}
+classifiers = [
+    "Natural Language :: English",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+
+[project.scripts]
+train = "fetch.train:main"
+
+[tool.setuptools.packages.find]
+include = ["fetch*"]
