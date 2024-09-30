@@ -18,17 +18,17 @@ import torchvision.models as models
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Key paramters for the different models
-MODELPARAMS = {"a": {"freq_cnn":"densenet121", "dm_cnn":"xception", "units":256},
-               "b": {"freq_cnn":"densenet121", "dm_cnn":"vgg16", "units":32},
-               "c": {"freq_cnn":"densenet169", "dm_cnn":"xception", "units":112},
-               "d": {"freq_cnn":"densenet201", "dm_cnn":"xception", "units":32},
-               "e": {"freq_cnn":"vgg19", "dm_cnn":"xception", "units":128},
-               "f": {"freq_cnn":"densenet169", "dm_cnn":"vgg16", "units":512},
-               "g": {"freq_cnn":"vgg19", "dm_cnn":"vgg16", "units":128},
-               "h": {"freq_cnn":"densenet201", "dm_cnn":"inceptionv2", "units":160},
-               "i": {"freq_cnn":"densenet201", "dm_cnn":"vgg16", "units":32},
-               "j": {"freq_cnn":"vgg19", "dm_cnn":"inceptionv2", "units":512},
-               "k": {"freq_cnn":"densenet121", "dm_cnn":"inceptionv3", "units":64},
+MODELPARAMS = {"a": {"freq_cnn":"densenet121", "dm_cnn":"xception", "features":256},
+               "b": {"freq_cnn":"densenet121", "dm_cnn":"vgg16", "features":32},
+               "c": {"freq_cnn":"densenet169", "dm_cnn":"xception", "features":112},
+               "d": {"freq_cnn":"densenet201", "dm_cnn":"xception", "features":32},
+               "e": {"freq_cnn":"vgg19", "dm_cnn":"xception", "features":128},
+               "f": {"freq_cnn":"densenet169", "dm_cnn":"vgg16", "features":512},
+               "g": {"freq_cnn":"vgg19", "dm_cnn":"vgg16", "features":128},
+               "h": {"freq_cnn":"densenet201", "dm_cnn":"inceptionv2", "features":160},
+               "i": {"freq_cnn":"densenet201", "dm_cnn":"vgg16", "features":32},
+               "j": {"freq_cnn":"vgg19", "dm_cnn":"inceptionv2", "features":512},
+               "k": {"freq_cnn":"densenet121", "dm_cnn":"inceptionv3", "features":64},
                }
 
 CNNPARAMS = {"densenet121":1024, "densenet169":1664, "densenet201":1920, "vgg19":512,
@@ -102,24 +102,38 @@ class _FreqBlock(nn.Module):
         """
         super().__init__()
         cnn_layer = MODELPARAMS[model]["freq_cnn"]
-        units = MODELPARAMS[model]["units"]
-        self.freq_units = CNNPARAMS[cnn_layer]
+        features = MODELPARAMS[model]["features"]
+        freq_features = CNNPARAMS[cnn_layer]
 
         self.block1= nn.Sequential(
             nn.Conv2d(1, 3, kernel_size=2, stride=(1, 1), padding="valid", dilation=(1,1), bias=True),
             nn.ReLU(),
             )
+        
+        # Use a pre-trained model with transfer learning per the paper (which weights??)
         cnn_block = torch.hub.load("pytorch/vision", cnn_layer, weights=None) 
         self.cnn = nn.Sequential(*[i for i in list(cnn_block.children())[:-1]])
         for ch in self.cnn.children():
             for param in ch.parameters():
-                param.requires_grad = True
-        self.block2 = nn.Sequential(
-            nn.AdaptiveMaxPool2d((2, 2)), ## TW need to fix this somehow  Something like --> https://github.com/pytorch/vision/blob/03b1d38ba3c67703e648fb067570eeb1a1e61265/torchvision/models/densenet.py#L193-L194
-            nn.BatchNorm1d(num_features=self.freq_units, eps=0.001, momentum=0.99),
+                param.requires_grad = False
+
+        # Replace the classifier layer with custom sequence
+        self.cnn_block.classifier = nn.Sequential(
+            #nn.AdaptiveMaxPool2d((2, 2))
+            nn.Linear(freq_features, features), # Somehow needs to be AdaptiveMaxPool2D or maybe Adaptive plus this Linearcall
+            nn.ReLU(), # Not sure if I need this
+            nn.BatchNorm1d(num_features=freq_features, eps=0.001, momentum=0.99), # Not sure if this needs to be 1D or what
             nn.Dropout(p=0.3),
-            nn.Linear(in_features=self.freq_units,out_features=units),
+            nn.Linear(in_features=freq_features, out_features=features),
         )
+
+        # See https://discuss.pytorch.org/t/input-output-size-runtime-error-while-doing-transfer-learning-on-cifar10/31675/2
+        #self.block2 = nn.Sequential(
+        #    nn.AdaptiveMaxPool2d((2, 2)), ## TW need to fix this somehow  Something like --> https://github.com/pytorch/vision/blob/03b1d38ba3c67703e648fb067570eeb1a1e61265/torchvision/models/densenet.py#L193-L194
+        #    nn.BatchNorm1d(num_features=self.freq_units, eps=0.001, momentum=0.99),
+        #    nn.Dropout(p=0.3),
+        #    nn.Linear(in_features=self.freq_units,out_features=units),
+        #)
 
     def forward(self, freq: torch.Tensor) -> torch.Tensor:
         logger.debug(f"FreqBlock forward function processing")
@@ -128,9 +142,6 @@ class _FreqBlock(nn.Module):
         
         output = self.cnn(output)
         logger.debug(f"Output shape after cnn {output.shape}")
-
-        output = self.block2(output)
-        logger.debug(f"Output shape after block2 {output.shape}")
         return output
 
 class CompleteModel(nn.Module):
@@ -150,12 +161,12 @@ class CompleteModel(nn.Module):
         self.freq_model = _FreqBlock(model)
         self.dm_model = _DMBlock(model)
 
-        units = MODELPARAMS[model]["units"]
+        features = MODELPARAMS[model]["features"]
 
         self.block = nn.Sequential(
-            nn.BatchNorm2d(num_features=units, eps=0.001, momentum=0.99),
+            nn.BatchNorm2d(num_features=features, eps=0.001, momentum=0.99),
             nn.ReLU(),
-            nn.Linear(in_features=units, out_features=units),
+            nn.Linear(in_features=features, out_features=features),
             nn.Softmax(dim=1)
         )
 
