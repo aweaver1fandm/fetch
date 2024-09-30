@@ -58,9 +58,20 @@ class _DMBlock(nn.Module):
         units = MODELPARAMS[model]["units"]
         dm_units = CNNPARAMS[cnn_layer]
 
+        self.block1 = nn.Sequential(
+            nn.Conv2d(1, 3,  kernel_size=(256,256), stride=(1,1), padding="valid", dilation=(1,1), bias=True),
+            nn.ReLU()
+        )
+
         self.cnn = None
         if cnn_layer != "xception":
             self.cnn = torch.hub.load("pytorch/vision", cnn_layer, weights=None)
+
+        self.block2 = nn.Sequential( 
+            nn.BatchNorm2d(num_features=dm_units, eps=0.001, momentum=0.99),
+            nn.Dropout(p=0.3),
+            nn.Linear(in_features=dm_units,out_features=units),
+        )
 
         # Readjust the input size for the model to match our input
         # Not sure if this is needed
@@ -68,18 +79,12 @@ class _DMBlock(nn.Module):
         #first_conv_layer.extend(list(model.features))  
         #cnn_layer.features= nn.Sequential(*first_conv_layer)
 
-        self.block = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(2,2), stride=(1,1), padding="valid", dilation=(1,1), bias=True),
-            nn.ReLU(),
-            self.cnn,    
-            nn.BatchNorm2d(num_features=dm_units, eps=0.001, momentum=0.99),
-            nn.Dropout(p=0.3),
-            nn.Linear(in_features=dm_units,out_features=units),
-        )
-
     def forward(self, dm: torch.Tensor) -> torch.Tensor:
         logger.debug(f"DMBlock forward function processing")
-        return self.block(dm)
+        output = self.block1(freq)
+        output = self.cnn(output)
+        return self.block2(output)
+        #return self.block(dm)
 
 class _FreqBlock(nn.Module):
     def __init__(self, model: str) -> None:
@@ -98,43 +103,35 @@ class _FreqBlock(nn.Module):
         super().__init__()
         cnn_layer = MODELPARAMS[model]["freq_cnn"]
         units = MODELPARAMS[model]["units"]
-        freq_units = CNNPARAMS[cnn_layer]
+        self.freq_units = CNNPARAMS[cnn_layer]
 
-        # Check this post https://stackoverflow.com/questions/59405042/runtimeerror-given-input-size-10x7x7-calculated-output-size-10x0x0-outp
-        # https://discuss.pytorch.org/t/given-input-size-512x1x1-calculated-output-size-512x0x0-output-size-is-too-small/111071
-
-        # https://stackoverflow.com/questions/74806963/given-input-size-512x1x1-calculated-output-size-512x0x0-output-size-is-t
-        #self.resnet = nn.Sequential(*[i for i in list(resnet.children())[:-1]]).to(device)
-        #for ch in self.resnet.children():
-        #    for param in ch.parameters():
-        #        param.requires_grad = False
-        
-        
-        # Readjust the input size for the model to match our input
-        # Not sure if this is needed
-        #first_layer = [nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(2,2), stride=(1,1), padding="valid", dilation=(1,1), bias=True),]
-        #first_conv_layer.extend(list(model.features))  
-        #cnn_layer.features= nn.Sequential(*first_conv_layer)
-
+        self.block1= nn.Sequential(
+            nn.Conv2d(1, 3, kernel_size=2, stride=(1, 1), padding="valid", dilation=(1,1), bias=True),
+            nn.ReLU(),
+            )
         cnn_block = torch.hub.load("pytorch/vision", cnn_layer, weights=None) 
         self.cnn = nn.Sequential(*[i for i in list(cnn_block.children())[:-1]])
         for ch in self.cnn.children():
             for param in ch.parameters():
                 param.requires_grad = True
-
-        self.block = nn.Sequential(
-            #nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(2,2), stride=(1,1), padding="valid", dilation=(1,1), bias=True),
-            nn.Conv2d(1, 3, kernel_size=(256, 256), stride=(1, 1), padding="valid", dilation=(1,1), bias=True),
-            nn.ReLU(),
-            self.cnn,
-            nn.BatchNorm1d(num_features=freq_units, eps=0.001, momentum=0.99),
+        self.block2 = nn.Sequential(
+            nn.AdaptiveMaxPool2d((2, 2)), ## TW need to fix this somehow  Something like --> https://github.com/pytorch/vision/blob/03b1d38ba3c67703e648fb067570eeb1a1e61265/torchvision/models/densenet.py#L193-L194
+            nn.BatchNorm1d(num_features=self.freq_units, eps=0.001, momentum=0.99),
             nn.Dropout(p=0.3),
-            nn.Linear(in_features=freq_units,out_features=units),
+            nn.Linear(in_features=self.freq_units,out_features=units),
         )
 
     def forward(self, freq: torch.Tensor) -> torch.Tensor:
         logger.debug(f"FreqBlock forward function processing")
-        return self.block(freq)
+        output = self.block1(freq)
+        logger.debug(f"Output shape after block1 {output.shape}")
+        
+        output = self.cnn(output)
+        logger.debug(f"Output shape after cnn {output.shape}")
+
+        output = self.block2(output)
+        logger.debug(f"Output shape after block2 {output.shape}")
+        return output
 
 class CompleteModel(nn.Module):
     def __init__(self, model: str) -> None:
