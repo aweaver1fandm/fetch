@@ -100,6 +100,25 @@ class _FreqBlock(nn.Module):
         units = MODELPARAMS[model]["units"]
         freq_units = CNNPARAMS[cnn_layer]
 
+        ###### POSSIBLE FIX #######
+        """
+        self.block1= nn.Sequential(
+            nn.Conv2d(1, 3, kernel_size=(256, 256), stride=(1, 1), padding="valid", dilation=(1,1), bias=True),
+            nn.ReLU(),
+            )
+        cnn_block = torch.hub.load("pytorch/vision", cnn_layer, weights=None) 
+        self.cnn = nn.Sequential(*[i for i in list(cnn_block.children())[:-1]])
+        for ch in self.cnn.children():
+            for param in ch.parameters():
+                param.requires_grad = True
+        self.block2 = nn.Sequential(
+            nn.BatchNorm1d(num_features=freq_units, eps=0.001, momentum=0.99),
+            nn.Dropout(p=0.3),
+            nn.Linear(in_features=freq_units,out_features=units),
+        )
+        """
+
+
         # Check this post https://stackoverflow.com/questions/59405042/runtimeerror-given-input-size-10x7x7-calculated-output-size-10x0x0-outp
         
         # https://stackoverflow.com/questions/74806963/given-input-size-512x1x1-calculated-output-size-512x0x0-output-size-is-t
@@ -133,6 +152,10 @@ class _FreqBlock(nn.Module):
 
     def forward(self, freq: torch.Tensor) -> torch.Tensor:
         logger.debug(f"FreqBlock forward function processing")
+        """
+        output = self.block1(freq)
+        output = self.cnn(output)
+        retrun self.block2(output)"""
         return self.block(freq)
 
 class CompleteModel(nn.Module):
