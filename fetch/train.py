@@ -25,9 +25,8 @@ LOGGINGFORMAT = (
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
-def train_loop(dataloader, model, loss_fn, optimizer):
+def train_loop(dataloader, model, loss_fn, optimizer, batch_size):
     size = len(dataloader.dataset)
-    batch_size = 32
     
     # Set the model to training mode - important for batch normalization and dropout layers
     model.train()
@@ -157,5 +156,5 @@ def main():
 
     for t in range(args.epochs):
         print(f"Epoch {t+1}\n-------------------------------")
-        train_loop(train_dataloader, model, loss_fn, optimizer)
+        train_loop(train_dataloader, model, loss_fn, optimizer, args.batch_size)
         #test_loop(test_dataloader, model, loss_fn)

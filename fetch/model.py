@@ -29,10 +29,14 @@ MODELPARAMS = {"a": {"freq_cnn":"densenet121", "dm_cnn":"xception", "features":2
                "i": {"freq_cnn":"densenet201", "dm_cnn":"vgg16", "features":32},
                "j": {"freq_cnn":"vgg19", "dm_cnn":"inceptionv2", "features":512},
                "k": {"freq_cnn":"densenet121", "dm_cnn":"inceptionv3", "features":64},
-               }
+              }
 
 CNNPARAMS = {"densenet121":1024, "densenet169":1664, "densenet201":1920, "vgg19":512,
              "xception":2048, "vgg16":512, "inceptionv2":1536, "inceptionv3":2048}
+
+WEIGHTS = {"densenet121":"DenseNet121_Weights.DEFAULT",
+           "vgg16":"VGG16_Weights.DEFAULT",
+          }
 
 logger = logging.getLogger(__name__)
 LOGGINGFORMAT = (
@@ -65,7 +69,7 @@ class _DMBlock(nn.Module):
 
         self.cnn_block = None
         if cnn_layer != "xception":
-            self.cnn_block = torch.hub.load("pytorch/vision", cnn_layer, weights=None)
+            self.cnn_block = torch.hub.load("pytorch/vision", cnn_layer, weights=WEIGHTS[cnn_layer])
 
         self.cnn_block = nn.Sequential(*[i for i in list(self.cnn_block.children())[:-1]])
         for ch in self.cnn_block.children():
@@ -123,7 +127,7 @@ class _FreqBlock(nn.Module):
             )
         
         # Use a pre-trained model with transfer learning per the paper (which weights??)
-        self.cnn_block = torch.hub.load("pytorch/vision", cnn_layer, weights=None) 
+        self.cnn_block = torch.hub.load("pytorch/vision", cnn_layer, weights=WEIGHTS[cnn_layer]) 
         self.cnn_block = nn.Sequential(*[i for i in list(self.cnn_block.children())[:-1]])
         for ch in self.cnn_block.children():
             for param in ch.parameters():
