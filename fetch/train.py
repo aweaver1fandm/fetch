@@ -27,10 +27,16 @@ os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 def train_loop(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
+    batch_size = 32
     
     # Set the model to training mode - important for batch normalization and dropout layers
     model.train()
     for batch, (freq_data, dm_data, label) in enumerate(dataloader):
+        
+        freq_data = freq_data.to(DEVICE)
+        dm_data = dm_data.to(DEVICE)
+        label = label.to(DEVICE)
+
         # Compute prediction and loss
         pred = model(freq_data, dm_data)
         loss = loss_fn(pred, label)
@@ -42,7 +48,7 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
         if batch % 100 == 0:
             loss, current = loss.item(), batch * batch_size + len(freq_data)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]") # was size
 
 def test_loop(dataloader, model, loss_fn):
 
@@ -143,9 +149,7 @@ def main():
     )
     test_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
     """
-    model = CompleteModel(args.model)
-    print(model)
-    # Need to do model.to(DEVICE) but also figure out how to get the data to DEVICE with data loader
+    model = CompleteModel(args.model).to(DEVICE)
 
     # Setup additional training parameters and train/test
     loss_fn = nn.CrossEntropyLoss()

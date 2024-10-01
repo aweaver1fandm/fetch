@@ -55,36 +55,48 @@ class _DMBlock(nn.Module):
         """
         super().__init__()
         cnn_layer = MODELPARAMS[model]["dm_cnn"]
-        units = MODELPARAMS[model]["units"]
-        dm_units = CNNPARAMS[cnn_layer]
+        features = MODELPARAMS[model]["features"]
+        dm_features = CNNPARAMS[cnn_layer]
 
-        self.block1 = nn.Sequential(
-            nn.Conv2d(1, 3,  kernel_size=(256,256), stride=(1,1), padding="valid", dilation=(1,1), bias=True),
-            nn.ReLU()
-        )
+        self.block1= nn.Sequential(
+            nn.Conv2d(1, 3, kernel_size=2, stride=(1, 1), padding="valid", dilation=(1,1), bias=True),
+            nn.ReLU(),
+            )
 
-        self.cnn = None
+        self.cnn_block = None
         if cnn_layer != "xception":
-            self.cnn = torch.hub.load("pytorch/vision", cnn_layer, weights=None)
+            self.cnn_block = torch.hub.load("pytorch/vision", cnn_layer, weights=None)
 
-        self.block2 = nn.Sequential( 
-            nn.BatchNorm2d(num_features=dm_units, eps=0.001, momentum=0.99),
-            nn.Dropout(p=0.3),
-            nn.Linear(in_features=dm_units,out_features=units),
+        self.cnn_block = nn.Sequential(*[i for i in list(self.cnn_block.children())[:-1]])
+        for ch in self.cnn_block.children():
+            for param in ch.parameters():
+                param.requires_grad = False
+
+        # Replace the classifier layer with custom sequence
+        self.cnn_block.classifier = nn.Sequential(
+            nn.AdaptiveMaxPool2d(output_size=1),
         )
 
-        # Readjust the input size for the model to match our input
-        # Not sure if this is needed
-        #first_layer = [nn.Conv2d(in_channels=1, out_channels=3, kernel_size=(2,2), stride=(1,1), padding="valid", dilation=(1,1), bias=True),]
-        #first_conv_layer.extend(list(model.features))  
-        #cnn_layer.features= nn.Sequential(*first_conv_layer)
+        self.block2 = nn.Sequential(
+            nn.BatchNorm2d(num_features=dm_features, eps=0.001, momentum=0.99),
+            nn.Dropout(p=0.3),
+            nn.Flatten(start_dim=1),
+            nn.Linear(in_features=dm_features, out_features=features),
+        )
 
     def forward(self, dm: torch.Tensor) -> torch.Tensor:
         logger.debug(f"DMBlock forward function processing")
-        output = self.block1(freq)
-        output = self.cnn(output)
-        return self.block2(output)
-        #return self.block(dm)
+
+        output = self.block1(dm)
+        logger.debug(f"Output shape after block1 {output.shape}")
+        
+        output = self.cnn_block(output)
+        logger.debug(f"Output shape after cnn {output.shape}")
+
+        output = self.block2(output)
+        logger.debug(f"Output shape after block2 {output.shape}")
+
+        return output
 
 class _FreqBlock(nn.Module):
     def __init__(self, model: str) -> None:
@@ -98,7 +110,7 @@ class _FreqBlock(nn.Module):
         5. Linear
 
         Args:
-            cnn_layer (nn.Module): The CNN network being used
+            cnn_layer (nn.Module): The pre-trained CNN network being used
         """
         super().__init__()
         cnn_layer = MODELPARAMS[model]["freq_cnn"]
@@ -111,37 +123,36 @@ class _FreqBlock(nn.Module):
             )
         
         # Use a pre-trained model with transfer learning per the paper (which weights??)
-        cnn_block = torch.hub.load("pytorch/vision", cnn_layer, weights=None) 
-        self.cnn = nn.Sequential(*[i for i in list(cnn_block.children())[:-1]])
-        for ch in self.cnn.children():
+        self.cnn_block = torch.hub.load("pytorch/vision", cnn_layer, weights=None) 
+        self.cnn_block = nn.Sequential(*[i for i in list(self.cnn_block.children())[:-1]])
+        for ch in self.cnn_block.children():
             for param in ch.parameters():
                 param.requires_grad = False
 
         # Replace the classifier layer with custom sequence
         self.cnn_block.classifier = nn.Sequential(
-            #nn.AdaptiveMaxPool2d((2, 2))
-            nn.Linear(freq_features, features), # Somehow needs to be AdaptiveMaxPool2D or maybe Adaptive plus this Linearcall
-            nn.ReLU(), # Not sure if I need this
-            nn.BatchNorm1d(num_features=freq_features, eps=0.001, momentum=0.99), # Not sure if this needs to be 1D or what
+            nn.AdaptiveMaxPool2d(output_size=1),
+        )
+
+        self.block2 = nn.Sequential(
+            nn.BatchNorm2d(num_features=freq_features, eps=0.001, momentum=0.99),
             nn.Dropout(p=0.3),
+            nn.Flatten(start_dim=1),
             nn.Linear(in_features=freq_features, out_features=features),
         )
 
-        # See https://discuss.pytorch.org/t/input-output-size-runtime-error-while-doing-transfer-learning-on-cifar10/31675/2
-        #self.block2 = nn.Sequential(
-        #    nn.AdaptiveMaxPool2d((2, 2)), ## TW need to fix this somehow  Something like --> https://github.com/pytorch/vision/blob/03b1d38ba3c67703e648fb067570eeb1a1e61265/torchvision/models/densenet.py#L193-L194
-        #    nn.BatchNorm1d(num_features=self.freq_units, eps=0.001, momentum=0.99),
-        #    nn.Dropout(p=0.3),
-        #    nn.Linear(in_features=self.freq_units,out_features=units),
-        #)
-
     def forward(self, freq: torch.Tensor) -> torch.Tensor:
         logger.debug(f"FreqBlock forward function processing")
+
         output = self.block1(freq)
         logger.debug(f"Output shape after block1 {output.shape}")
         
-        output = self.cnn(output)
+        output = self.cnn_block(output)
         logger.debug(f"Output shape after cnn {output.shape}")
+
+        output = self.block2(output)
+        logger.debug(f"Output shape after block2 {output.shape}")
+
         return output
 
 class CompleteModel(nn.Module):
@@ -164,7 +175,7 @@ class CompleteModel(nn.Module):
         features = MODELPARAMS[model]["features"]
 
         self.block = nn.Sequential(
-            nn.BatchNorm2d(num_features=features, eps=0.001, momentum=0.99),
+            nn.BatchNorm1d(num_features=features, eps=0.001, momentum=0.99),
             nn.ReLU(),
             nn.Linear(in_features=features, out_features=features),
             nn.Softmax(dim=1)
@@ -177,7 +188,11 @@ class CompleteModel(nn.Module):
         freq_output = self.freq_model(freq_input)
         dm_output = self.dm_model(dm_input)
 
+        logger.debug(f"Freq data shape after processing{freq_output.shape}")
+        logger.debug(f"dm data shape after processing {dm_output.shape}")
         output = torch.mul(freq_output, dm_output)
+
+        logger.debug(f"MUL data shape {output.shape}")
         return self.block(output)
     
 def getModel(model: str) -> nn.Module:
