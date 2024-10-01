@@ -4,24 +4,20 @@ import os
 import string
 import glob
 
-import pandas as pd
-
 import torch
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 
 from fetch.pulsar_data import PulsarData
-from fetch.model import CompleteModel
+from fetch.model import PulsarModel
 
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 logger = logging.getLogger(__name__)
-LOGGINGFORMAT = (
-        "%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s"
-    )
+LOGGINGFORMAT = ("%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s")
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
@@ -92,6 +88,7 @@ def main():
         "--test_data_dir",
         help="Directory containing h5 files for testing.  Assumes the files contain labels",
         type=str,
+        default=None,
     )
     parser.add_argument(
         "-b", "--batch_size", help="Batch size for training data", default=32, type=int
@@ -115,9 +112,7 @@ def main():
     )
     args = parser.parse_args()
 
-    logging_format = (
-        "%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s"
-    )
+    logging_format = ("%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s")
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, format=logging_format)
@@ -130,31 +125,31 @@ def main():
     if args.gpu_id:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
 
-    train_data = glob.glob(args.train_data_dir+ "/*.h*5")
+    # Get our training and test data
+    # If no test directory given, split training data 
+    # into train/test 85% to 15% split
+    train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
+    train_data = PulsarData(files=train_data_files)
+    test_data_files = None
+    test_data = None
+    if args.test_data_dir is None:
+        train_data, test_data = random_split(train_data, [0.85, 0.15])
+    else:    
+        test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
+        test_data = PulsarData(files=test_data_files)
 
-    # Check if there's test data, if not randomly split up train
-    #train_df, val_df = train_test_split(
-    #    data_df, test_size=(1 - args.val_split), random_state=1993
-    #)
-    train_data = PulsarData(files = train_data)
     train_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
-
-    """
-    test_data = PulsarData(
-        list_IDs=list(val_df["h5"]),
-        labels=list(val_df["label"]),
-        noise=False,
-        shuffle=False,
-    )
     test_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
-    """
-    model = CompleteModel(args.model).to(DEVICE)
+    
+    # Build the model and push it to proper compute device
+    model = PulsarModel(args.model).to(DEVICE)
 
-    # Setup additional training parameters and train/test
+    # Setup additional training parameters
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(params=model.parameters(), lr=args.learning_rate)
 
+    # Train the model
     for t in range(args.epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         train_loop(train_dataloader, model, loss_fn, optimizer, args.batch_size)
-        #test_loop(test_dataloader, model, loss_fn)
+        test_loop(test_dataloader, model, loss_fn)

@@ -1,11 +1,7 @@
-r""" Contains building blocks for the different models.
-All the models have the same architecture.  The 
+r""" Contains building blocks for the different pulsar models.
+All the models have the same broad architecture.  The biggest
 difference between them is the CNN model used to
 to process the freq and dm data.
-              
-1. Process freq data (See _FreqLayer class)
-2. Process dm data (See _DMLayer class)
-3. Combine results (using multiply) and do additional processing
 """
 import logging
 
@@ -17,50 +13,58 @@ import torchvision.models as models
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Key paramters for the different models
-MODELPARAMS = {"a": {"freq_cnn":"densenet121", "dm_cnn":"xception", "features":256},
-               "b": {"freq_cnn":"densenet121", "dm_cnn":"vgg16", "features":32},
-               "c": {"freq_cnn":"densenet169", "dm_cnn":"xception", "features":112},
-               "d": {"freq_cnn":"densenet201", "dm_cnn":"xception", "features":32},
-               "e": {"freq_cnn":"vgg19", "dm_cnn":"xception", "features":128},
-               "f": {"freq_cnn":"densenet169", "dm_cnn":"vgg16", "features":512},
-               "g": {"freq_cnn":"vgg19", "dm_cnn":"vgg16", "features":128},
-               "h": {"freq_cnn":"densenet201", "dm_cnn":"inceptionv2", "features":160},
-               "i": {"freq_cnn":"densenet201", "dm_cnn":"vgg16", "features":32},
-               "j": {"freq_cnn":"vgg19", "dm_cnn":"inceptionv2", "features":512},
-               "k": {"freq_cnn":"densenet121", "dm_cnn":"inceptionv3", "features":64},
-              }
+# Key paramters for the different pulsar models
+MODELPARAMS = {"a": {"freq":"densenet121", "dm":"xception", "features":256},
+               "b": {"freq":"densenet121", "dm":"vgg16", "features":32},
+               "c": {"freq":"densenet169", "dm":"xception", "features":112},
+               "d": {"freq":"densenet201", "dm":"xception", "features":32},
+               "e": {"freq":"vgg19", "dm":"xception", "features":128},
+               "f": {"freq":"densenet169", "dm":"vgg16", "features":512},
+               "g": {"freq":"vgg19", "dm":"vgg16", "features":128},
+               "h": {"freq":"densenet201", "dm":"inceptionv2", "features":160},
+               "i": {"freq":"densenet201", "dm":"vgg16", "features":32},
+               "j": {"freq":"vgg19", "dm":"inceptionv2", "features":512},
+               "k": {"freq":"densenet121", "dm":"inceptionv3", "features":64},
+}
 
-CNNPARAMS = {"densenet121":1024, "densenet169":1664, "densenet201":1920, "vgg19":512,
-             "xception":2048, "vgg16":512, "inceptionv2":1536, "inceptionv3":2048}
-
-WEIGHTS = {"densenet121":"DenseNet121_Weights.DEFAULT",
-           "vgg16":"VGG16_Weights.DEFAULT",
-          }
+# Paramaters related to different pre-trained CNN models
+CNNPARAMS = {"densenet121": {"features":1024, "weights":"DenseNet121_Weights.DEFAULT"},
+             "densenet169": {"features":1664, "weights":"DenseNet169_Weights.DEFAULT"},
+             "densenet201": {"features":1920, "weights":"DenseNet201_Weights.DEFAULT"},
+             "vgg19": {"features":512, "weights":None},
+             "xception": {"features":2048, "weights":None},
+             "vgg16": {"features":512, "weights":"VGG16_Weights.DEFAULT"},
+             "inceptionv2": {"features":1536, "weights":None},
+             "inceptionv3": {"features":2048, "weights":None},
+}   
 
 logger = logging.getLogger(__name__)
-LOGGINGFORMAT = (
-        "%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s"
-    )
+LOGGINGFORMAT = ("%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s")
 
-class _DMBlock(nn.Module):
-    def __init__(self, model: str) -> None:
-        r"""Adds a processing group to the model for the DM data.
-
-        The DM data is processed sequentially in the following steps
+class _CNNBlock(nn.Module):
+    def __init__(self, model: str, data_type: str) -> None:
+        r"""Adds a processing group to process either freq or DM data
+        
+        The  data is processed in the following steps
         1. Conv2D (with activation)
-        2. Process through a CNN (either Xception, VGG16, InceptionV2, InceptionV3)
+        2. Pre-trained CNN (e.g., DenseNet121)
         3. BatchNorm2D
         4. Dropout
         5. Linear
 
-        Args:
-            cnn_layer (nn.Module): The CNN network being used
+        The output of the processing of this block for both freq and DM
+        data are then combined and further processed to produce a final 
+        classification
+
+        :param model: The pulsar model being built
+        :type model: str
+        :param data_type: The type of data being processed, freq or dm
+        :type data_type: str
         """
         super().__init__()
-        cnn_layer = MODELPARAMS[model]["dm_cnn"]
-        features = MODELPARAMS[model]["features"]
-        dm_features = CNNPARAMS[cnn_layer]
+        cnn_model = MODELPARAMS[model][data_type]
+        cnn_features = MODELPARAMS[model]["features"]
+        data_features = CNNPARAMS[cnn_model]["features"]
 
         self.block1= nn.Sequential(
             nn.Conv2d(1, 3, kernel_size=2, stride=(1, 1), padding="valid", dilation=(1,1), bias=True),
@@ -68,9 +72,10 @@ class _DMBlock(nn.Module):
             )
 
         self.cnn_block = None
-        if cnn_layer != "xception":
-            self.cnn_block = torch.hub.load("pytorch/vision", cnn_layer, weights=WEIGHTS[cnn_layer])
+        if cnn_model != "xception":
+            self.cnn_block = torch.hub.load("pytorch/vision", cnn_model, weights=CNNPARAMS[cnn_model]["weights"])
 
+        # Don't train any of the layers of the pre-trained models
         self.cnn_block = nn.Sequential(*[i for i in list(self.cnn_block.children())[:-1]])
         for ch in self.cnn_block.children():
             for param in ch.parameters():
@@ -82,102 +87,43 @@ class _DMBlock(nn.Module):
         )
 
         self.block2 = nn.Sequential(
-            nn.BatchNorm2d(num_features=dm_features, eps=0.001, momentum=0.99),
+            nn.BatchNorm2d(num_features=data_features, eps=0.001, momentum=0.99),
             nn.Dropout(p=0.3),
             nn.Flatten(start_dim=1),
-            nn.Linear(in_features=dm_features, out_features=features),
+            nn.Linear(in_features=data_features, out_features=cnn_features),
         )
 
-    def forward(self, dm: torch.Tensor) -> torch.Tensor:
-        logger.debug(f"DMBlock forward function processing")
-
-        output = self.block1(dm)
-        logger.debug(f"Output shape after block1 {output.shape}")
-        
+    def forward(self, data: torch.Tensor) -> torch.Tensor:
+        output = self.block1(data)
         output = self.cnn_block(output)
-        logger.debug(f"Output shape after cnn {output.shape}")
-
         output = self.block2(output)
-        logger.debug(f"Output shape after block2 {output.shape}")
-
+        
         return output
 
-class _FreqBlock(nn.Module):
+class PulsarModel(nn.Module):
     def __init__(self, model: str) -> None:
-        r"""Adds a processing group to the model for the freq data.
-
-        The freq data is processed sequentially in the following steps
-        1. Conv2D (with ReLu activation)
-        2. Process through a CNN (either Densenet121, Densenet169, Densenet201, VGG19)
-        3. BatchNorm2D
-        4. Dropout
-        5. Linear
-
-        Args:
-            cnn_layer (nn.Module): The pre-trained CNN network being used
-        """
-        super().__init__()
-        cnn_layer = MODELPARAMS[model]["freq_cnn"]
-        features = MODELPARAMS[model]["features"]
-        freq_features = CNNPARAMS[cnn_layer]
-
-        self.block1= nn.Sequential(
-            nn.Conv2d(1, 3, kernel_size=2, stride=(1, 1), padding="valid", dilation=(1,1), bias=True),
-            nn.ReLU(),
-            )
+        r"""Builds the complete pulsar model containing three components
         
-        # Use a pre-trained model with transfer learning per the paper (which weights??)
-        self.cnn_block = torch.hub.load("pytorch/vision", cnn_layer, weights=WEIGHTS[cnn_layer]) 
-        self.cnn_block = nn.Sequential(*[i for i in list(self.cnn_block.children())[:-1]])
-        for ch in self.cnn_block.children():
-            for param in ch.parameters():
-                param.requires_grad = False
+        1. Sub-model to process freq data
+        2. Sub-model to process DM data
+        3. Combine results from two sub-models and further
+           process to produce final classification
 
-        # Replace the classifier layer with custom sequence
-        self.cnn_block.classifier = nn.Sequential(
-            nn.AdaptiveMaxPool2d(output_size=1),
-        )
-
-        self.block2 = nn.Sequential(
-            nn.BatchNorm2d(num_features=freq_features, eps=0.001, momentum=0.99),
-            nn.Dropout(p=0.3),
-            nn.Flatten(start_dim=1),
-            nn.Linear(in_features=freq_features, out_features=features),
-        )
-
-    def forward(self, freq: torch.Tensor) -> torch.Tensor:
-        logger.debug(f"FreqBlock forward function processing")
-
-        output = self.block1(freq)
-        logger.debug(f"Output shape after block1 {output.shape}")
-        
-        output = self.cnn_block(output)
-        logger.debug(f"Output shape after cnn {output.shape}")
-
-        output = self.block2(output)
-        logger.debug(f"Output shape after block2 {output.shape}")
-
-        return output
-
-class CompleteModel(nn.Module):
-    def __init__(self, model: str) -> None:
-        r"""Builds the complete model, combining the freq data sub-model
-        with the dm data sub-model and final processing of the combined
-        data is done
+        :param model: The pulsar model being built (a-k)
+        :type model: str
         """
         super().__init__()
 
-        logging.basicConfig(level=logging.DEBUG, format=LOGGINGFORMAT)
-        logger.debug(f"Building model {model}")
-        logger.debug(f"Freq CNN is {MODELPARAMS[model]['freq_cnn']}")
-        logger.debug(f"DM CNN is {MODELPARAMS[model]['dm_cnn']}")
-
-        # https://discuss.pytorch.org/t/how-to-assemble-two-models-into-one-big-model/157027
-        self.freq_model = _FreqBlock(model)
-        self.dm_model = _DMBlock(model)
-
         features = MODELPARAMS[model]["features"]
+    
+        logger.info(f"Building pulsar model: {model}")
+        logger.info(f"Using {MODELPARAMS[model]['freq']} for frequency data processing")
+        logger.info(f"Using {MODELPARAMS[model]['dm']} for DM data processing")
 
+        self.freq_model = _CNNBlock(model, "freq")
+        self.dm_model = _CNNBlock(model, "dm")
+
+        # Final process of combined freq and DM data
         self.block = nn.Sequential(
             nn.BatchNorm1d(num_features=features, eps=0.001, momentum=0.99),
             nn.ReLU(),
@@ -186,23 +132,16 @@ class CompleteModel(nn.Module):
         )
 
     def forward(self, freq_input: torch.Tensor, dm_input: torch.Tensor) -> torch.Tensor:
-        logger.debug(f"CompleteModel forward function processing")
-        logger.debug(f"Freq data shape {freq_input.shape}")
-        logger.debug(f"dm data shape {dm_input.shape}")
         freq_output = self.freq_model(freq_input)
         dm_output = self.dm_model(dm_input)
 
-        logger.debug(f"Freq data shape after processing{freq_output.shape}")
-        logger.debug(f"dm data shape after processing {dm_output.shape}")
+        # Combine the outputs and produce final classification
         output = torch.mul(freq_output, dm_output)
+        output = self.block(output)
 
-        logger.debug(f"MUL data shape {output.shape}")
-        return self.block(output)
-    
-def getModel(model: str) -> nn.Module:
-    pass
+        return output
 
 if __name__ == "__main__":
      for model in MODELPARAMS:
         print(f"Trying to build model {model}")
-        m = CompleteModel(model)
+        m = PulsarModel(model)
