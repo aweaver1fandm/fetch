@@ -56,10 +56,15 @@ def test_loop(dataloader, model, loss_fn):
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
-        for X, y in dataloader:
-            pred = model(X)
-            test_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+        for freq_data, dm_data, label in dataloader:
+
+            freq_data = freq_data.to(DEVICE)
+            dm_data = dm_data.to(DEVICE)
+            label = label.to(DEVICE)
+
+            pred = model(freq_data, dm_data)
+            test_loss += loss_fn(pred, label).item()
+            correct += (pred.argmax(1) == label).type(torch.float).sum().item()
 
     test_loss /= num_batches
     correct /= size
@@ -153,3 +158,7 @@ def main():
         print(f"Epoch {t+1}\n-------------------------------")
         train_loop(train_dataloader, model, loss_fn, optimizer, args.batch_size)
         test_loop(test_dataloader, model, loss_fn)
+
+    # Save the model weights
+    weight_file = "/model_" + args.model + "_weights.pth"
+    torch.save(model.state_dict(), args.output_path + weight_file)
