@@ -691,6 +691,7 @@ Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: pandas>=1.2.2
 Requires-Dist: torch>=2.3.0
+Requires-Dist: torchvision
 Requires-Dist: numpy>=1.19.5
 Requires-Dist: h5py>=3.1.0
 Requires-Dist: scipy>=1.6.0

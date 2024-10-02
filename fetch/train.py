@@ -28,9 +28,9 @@ def train_loop(dataloader, model, loss_fn, optimizer, batch_size):
     model.train()
     for batch, (freq_data, dm_data, label) in enumerate(dataloader):
         
-        freq_data = freq_data.to(DEVICE)
-        dm_data = dm_data.to(DEVICE)
-        label = label.to(DEVICE)
+        freq_data = freq_data.to(DEVICE, non_blocking=True)
+        dm_data = dm_data.to(DEVICE, non_blocking=True)
+        label = label.to(DEVICE, non_blocking=True)
 
         # Compute prediction and loss
         pred = model(freq_data, dm_data)
@@ -43,7 +43,7 @@ def train_loop(dataloader, model, loss_fn, optimizer, batch_size):
 
         if batch % 100 == 0:
             loss, current = loss.item(), batch * batch_size + len(freq_data)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]") # was size
+            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
 
 def test_loop(dataloader, model, loss_fn):
 
@@ -58,9 +58,9 @@ def test_loop(dataloader, model, loss_fn):
     with torch.no_grad():
         for freq_data, dm_data, label in dataloader:
 
-            freq_data = freq_data.to(DEVICE)
-            dm_data = dm_data.to(DEVICE)
-            label = label.to(DEVICE)
+            freq_data = freq_data.to(DEVICE, non_blocking=True)
+            dm_data = dm_data.to(DEVICE, non_blocking=True)
+            label = label.to(DEVICE, non_blocking=True)
 
             pred = model(freq_data, dm_data)
             test_loss += loss_fn(pred, label).item()
@@ -68,7 +68,7 @@ def test_loop(dataloader, model, loss_fn):
 
     test_loss /= num_batches
     correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n", flush=True)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -130,6 +130,8 @@ def main():
     if args.gpu_id:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
 
+    logger.info(f"Using {DEVICE} for computation")
+
     # Get our training and test data
     # If no test directory given, split training data 
     # into train/test 85% to 15% split
@@ -143,8 +145,8 @@ def main():
         test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
         test_data = PulsarData(files=test_data_files)
 
-    train_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
-    test_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
+    train_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, pin_memory=True)
+    test_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False, pin_memory=True)
     
     # Build the model and push it to proper compute device
     model = PulsarModel(args.model).to(DEVICE)
@@ -155,7 +157,7 @@ def main():
 
     # Train the model
     for t in range(args.epochs):
-        print(f"Epoch {t+1}\n-------------------------------")
+        print(f"Epoch {t+1}\n-------------------------------", flush=True)
         train_loop(train_dataloader, model, loss_fn, optimizer, args.batch_size)
         test_loop(test_dataloader, model, loss_fn)
 
