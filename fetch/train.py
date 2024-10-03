@@ -28,6 +28,8 @@ def train_loop(dataloader, model, loss_fn, optimizer, batch_size):
     model.train()
     for batch, (freq_data, dm_data, label) in enumerate(dataloader):
 
+        # Do something here to add noise to freq data
+        
         freq_data = freq_data.to(DEVICE)
         dm_data = dm_data.to(DEVICE)
         label = label.to(DEVICE)
@@ -45,7 +47,7 @@ def train_loop(dataloader, model, loss_fn, optimizer, batch_size):
             loss, current = loss.item(), batch * batch_size + len(freq_data)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
 
-def test_loop(dataloader, model, loss_fn):
+def evaluate_loop(dataloader, model, loss_fn):
 
     # Set the model to evaluation mode - important for batch normalization and dropout layers
     model.eval()
@@ -69,6 +71,9 @@ def test_loop(dataloader, model, loss_fn):
     test_loss /= num_batches
     correct /= size
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n", flush=True)
+
+def test_model(dataloader, model):
+    pass
 
 def main():
     parser = argparse.ArgumentParser(
@@ -132,22 +137,13 @@ def main():
 
     logger.info(f"Using {DEVICE} for computation")
 
-    # Load training and test data
-    # If no test directory given, split training data 
-    # 85% to 15% into train/test
+    # Load training and split 85% to 15% into train/validate
     train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
     train_data = PulsarData(files=train_data_files, noise=True)
-    test_data_files = None
-    test_data = None
-    if args.test_data_dir is None:
-        train_data, test_data = random_split(train_data, [0.85, 0.15])
-        #test_data.dataset.setNoise(False)
-    else:    
-        test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
-        test_data = PulsarData(files=test_data_files)
+    train_data, validate_data = random_split(train_data, [0.85, 0.15])
 
     train_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
-    test_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
+    validate_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
 
     # Build the model and push it to proper compute device
     model = PulsarModel(args.model).to(DEVICE)
@@ -160,7 +156,15 @@ def main():
     for t in range(args.epochs):
         print(f"Epoch {t+1}\n-------------------------------", flush=True)
         train_loop(train_dataloader, model, loss_fn, optimizer, args.batch_size)
-        test_loop(test_dataloader, model, loss_fn)
+        evaluate_loop(validate_dataloader, model, loss_fn)
+
+    # Test the trained model
+    if args.test_data_dir is not None:
+        test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
+        test_data = PulsarData(files=test_data_files)
+        test_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
+
+        test_model(test_dataloader, model)
 
     # Save the model weights
     weight_file = "/model_" + args.model + "_weights.pth"

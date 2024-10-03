@@ -94,20 +94,6 @@ class PulsarData(Dataset):
         #    ft_data += np.random.normal(loc=self.noise_mean, scale=self.noise_std, size=ft_data.shape)
 
         return ft_data, dt_data, self.labels[index]
-
-    def getNoise(self):
-        return self.noise
-
-    def setNoise(self, noise: bool) -> None:
-        r"""
-
-        Mostly a helper function to turn off noise when training
-        and the test set is a split of the training set
-
-        :param noise: Add noise or not
-        """
-
-        self.noise = noise
         
     def _data_from_h5(self, file: str) -> None:
         r"""
