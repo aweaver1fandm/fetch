@@ -109,7 +109,6 @@ class PulsarData(Dataset):
         Adds the observations to the arrays for the entire data set
 
         :param file: The .h5 file containing the freq, dm, and possibly label for pulsar(s)
-        :return: None
         """
 
         data = h5py.File(file, 'r')

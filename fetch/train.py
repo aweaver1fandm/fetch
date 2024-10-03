@@ -21,7 +21,13 @@ LOGGINGFORMAT = ("%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(messa
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
-def train_loop(dataloader, model, loss_fn, optimizer, batch_size):
+def train_loop(dataloader: DataLoader, 
+               model: nn.Module, 
+               loss_fn, 
+               optimizer, 
+               batch_size: int) -> None:
+    r"""
+    """
     size = len(dataloader.dataset)
     
     # Set the model to training mode - important for batch normalization and dropout layers
@@ -47,7 +53,9 @@ def train_loop(dataloader, model, loss_fn, optimizer, batch_size):
             loss, current = loss.item(), batch * batch_size + len(freq_data)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
 
-def evaluate_loop(dataloader, model, loss_fn):
+def evaluate_loop(dataloader: DataLoader, model: nn.Module, loss_fn) -> None:
+    r"""
+    """
 
     # Set the model to evaluation mode - important for batch normalization and dropout layers
     model.eval()
@@ -72,7 +80,9 @@ def evaluate_loop(dataloader, model, loss_fn):
     correct /= size
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n", flush=True)
 
-def test_model(dataloader, model):
+def test_model(dataloader: DataLoader, model: nn.Module) -> None:
+    r"""
+    """
     pass
 
 def main():

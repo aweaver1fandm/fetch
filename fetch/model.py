@@ -57,9 +57,7 @@ class _CNNBlock(nn.Module):
         classification
 
         :param model: The pulsar model being built
-        :type model: str
         :param data_type: The type of data being processed, freq or dm
-        :type data_type: str
         """
         super().__init__()
         cnn_model = MODELPARAMS[model][data_type]
@@ -110,7 +108,6 @@ class PulsarModel(nn.Module):
            process to produce final classification
 
         :param model: The pulsar model being built (a-k)
-        :type model: str
         """
         super().__init__()
 
