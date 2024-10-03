@@ -27,10 +27,6 @@ def train_loop(dataloader, model, loss_fn, optimizer, batch_size):
     # Set the model to training mode - important for batch normalization and dropout layers
     model.train()
     for batch, (freq_data, dm_data, label) in enumerate(dataloader):
-        
-        #freq_data = freq_data.to(DEVICE, non_blocking=True)
-        #dm_data = dm_data.to(DEVICE, non_blocking=True)
-        #label = label.to(DEVICE, non_blocking=True)
 
         freq_data = freq_data.to(DEVICE)
         dm_data = dm_data.to(DEVICE)
@@ -61,10 +57,6 @@ def test_loop(dataloader, model, loss_fn):
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
         for freq_data, dm_data, label in dataloader:
-
-            #freq_data = freq_data.to(DEVICE, non_blocking=True)
-            #dm_data = dm_data.to(DEVICE, non_blocking=True)
-            #label = label.to(DEVICE, non_blocking=True)
 
             freq_data = freq_data.to(DEVICE)
             dm_data = dm_data.to(DEVICE)
@@ -140,24 +132,23 @@ def main():
 
     logger.info(f"Using {DEVICE} for computation")
 
-    # Get our training and test data
+    # Load training and test data
     # If no test directory given, split training data 
-    # into train/test 85% to 15% split
+    # 85% to 15% into train/test
     train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
-    train_data = PulsarData(files=train_data_files)
+    train_data = PulsarData(files=train_data_files, noise=True)
     test_data_files = None
     test_data = None
     if args.test_data_dir is None:
         train_data, test_data = random_split(train_data, [0.85, 0.15])
+        #test_data.dataset.setNoise(False)
     else:    
         test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
         test_data = PulsarData(files=test_data_files)
 
-    #train_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, pin_memory=True)
-    #test_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False, pin_memory=True)
     train_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
     test_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
-    
+
     # Build the model and push it to proper compute device
     model = PulsarModel(args.model).to(DEVICE)
 

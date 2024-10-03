@@ -32,23 +32,14 @@ class PulsarData(Dataset):
         r"""
 
         :param files: list of h5 files
-        :type files: list
         :param labels: list of labels (use fake labels when using predict)
-        :type labels: list
         :param ft_dim: 2D shape (def (256, 256)
-        :type dt_dim tuple
         :param dt_dim: 2D shape (def (256, 256)
-        :type ft_dim tuple
         :param n_channels: number of channels in data (def = 1)
-        :type n_channels: int
         :param n_classes: number of classes to classify data into (def = 2)
-        :type n_classes: ints
         :param noise: to add noise or not to?
-        :type noise: bool
         :param noise_mean: mean of gaussian noise
-        :type noise_mean: float
         :param noise_std: standard deviation of gaussian noise
-        :type noise_std: float
         """
     
         self.ft_dim = ft_dim
@@ -83,7 +74,7 @@ class PulsarData(Dataset):
         :param index: index
         :return: Specific pulsar data(ft and dt) and label
         """
-        
+
         ft_data = np.empty((*self.ft_dim, self.n_channels))
         dt_data = np.empty((*self.dt_dim, self.n_channels))
 
@@ -99,14 +90,25 @@ class PulsarData(Dataset):
         ft_data = np.reshape(ft_data, (self.n_channels, *self.ft_dim))
         dt_data = np.reshape(dt_data, (self.n_channels, *self.dt_dim))
 
-        """
-        if self.noise:
-            X += np.random.normal(
-                loc=self.noise_mean, scale=self.noise_std, size=X.shape
-            )"""
+        #if self.noise:
+        #    ft_data += np.random.normal(loc=self.noise_mean, scale=self.noise_std, size=ft_data.shape)
 
         return ft_data, dt_data, self.labels[index]
 
+    def getNoise(self):
+        return self.noise
+
+    def setNoise(self, noise: bool) -> None:
+        r"""
+
+        Mostly a helper function to turn off noise when training
+        and the test set is a split of the training set
+
+        :param noise: Add noise or not
+        """
+
+        self.noise = noise
+        
     def _data_from_h5(self, file: str) -> None:
         r"""
 
@@ -181,20 +183,3 @@ class PulsarData(Dataset):
         else:
             logger.info(f"Input file does not contains labels")
             self.labels = np.append(self.labels, np.empty(num_observations, dtype=int))
-
-if __name__ == "__main__":
-
-    logging.basicConfig(level=logging.DEBUG, format=LOGGINGFORMAT)
-    
-    sample_files = glob.glob("/data/fetch_data/sample_data/*.h5")
-    data_test = PulsarData(files=sample_files)
-
-    i = 0
-    for obs in data_test:
-        print(f"FT data is {obs[0]}")
-        print(f"DT data is {obs[1]}")
-        print(f"Label data is {obs[2]}")
-        i += 1
-
-        if i == 3:
-            sys.exit(0)

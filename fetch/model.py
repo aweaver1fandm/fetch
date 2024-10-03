@@ -31,11 +31,11 @@ MODELPARAMS = {"a": {"freq":"densenet121", "dm":"xception", "features":256},
 CNNPARAMS = {"densenet121": {"features":1024, "weights":"DenseNet121_Weights.DEFAULT"},
              "densenet169": {"features":1664, "weights":"DenseNet169_Weights.DEFAULT"},
              "densenet201": {"features":1920, "weights":"DenseNet201_Weights.DEFAULT"},
-             "vgg19": {"features":512, "weights":None},
+             "vgg19": {"features":512, "weights":"VGG19_Weights.DEFAULT"},
              "xception": {"features":2048, "weights":None},
              "vgg16": {"features":512, "weights":"VGG16_Weights.DEFAULT"},
              "inceptionv2": {"features":1536, "weights":None},
-             "inceptionv3": {"features":2048, "weights":None},
+             "inceptionv3": {"features":2048, "weights":"Inception_V3_Weights.DEFAULT"},
 }   
 
 logger = logging.getLogger(__name__)
@@ -140,8 +140,3 @@ class PulsarModel(nn.Module):
         output = self.block(output)
 
         return output
-
-if __name__ == "__main__":
-     for model in MODELPARAMS:
-        print(f"Trying to build model {model}")
-        m = PulsarModel(model)
