@@ -94,7 +94,7 @@ def test_model(dataloader: DataLoader, model: nn.Module) -> None:
     with torch.no_grad():
         for freq_data, dm_data, label in dataloader:
 
-            truth = torch.cat((truth, labels))
+            truth = torch.cat((truth, label))
 
             freq_data = freq_data.to(DEVICE)
             dm_data = dm_data.to(DEVICE)
