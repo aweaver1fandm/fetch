@@ -8,7 +8,8 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets
-from torchvision.transforms import ToTensor
+
+from torcheval.metrics.functional import binary_precision, binary_recall, binary_f1_score
 
 from fetch.pulsar_data import PulsarData
 from fetch.model import PulsarModel
@@ -24,7 +25,7 @@ os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 def train_loop(dataloader: DataLoader, 
                model: nn.Module, 
                loss_fn, 
-               optimizer, 
+               optimizer,
                batch_size: int) -> None:
     r"""
     """
@@ -32,9 +33,7 @@ def train_loop(dataloader: DataLoader,
     
     # Set the model to training mode - important for batch normalization and dropout layers
     model.train()
-    for batch, (freq_data, dm_data, label) in enumerate(dataloader):
-
-        # Do something here to add noise to freq data
+    for batch, (freq_data, dm_data, label) in enumerate(dataloader): 
         
         freq_data = freq_data.to(DEVICE)
         dm_data = dm_data.to(DEVICE)
@@ -83,7 +82,32 @@ def evaluate_loop(dataloader: DataLoader, model: nn.Module, loss_fn) -> None:
 def test_model(dataloader: DataLoader, model: nn.Module) -> None:
     r"""
     """
-    pass
+    # Set the model to evaluation mode - important for batch normalization and dropout layers
+    model.eval()
+    size = len(dataloader.dataset)
+    num_batches = len(dataloader)
+    truth = torch.empty(0, 1)
+    predictions = torch.empty(0, 1)
+
+    # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
+    # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
+    with torch.no_grad():
+        for freq_data, dm_data, label in dataloader:
+
+            truth = torch.cat((truth, labels))
+
+            freq_data = freq_data.to(DEVICE)
+            dm_data = dm_data.to(DEVICE)
+            label = label.to(DEVICE)
+
+            pred = model(freq_data, dm_data)
+            predictions = torch.cat((predictions, pred))
+            
+    recall = binary_recall(predictions, truth)
+    precision = binary_precision(predictions, truth)
+    f1 = binary_f1_score(predictions, truth)
+
+    print(f"--- Test results ---\n Recall: {recall}\n Precision: {precision}\n F1: {f1}\n", flush=True)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -154,6 +178,10 @@ def main():
 
     train_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
     validate_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
+
+    # Add some noise to freq data to help avoid overtraining
+    for freq_data, dm_data, label in train_dataloader:
+        freq_data += torch.normal(0.0, 1.0, size=freq_data.shape)
 
     # Build the model and push it to proper compute device
     model = PulsarModel(args.model).to(DEVICE)
