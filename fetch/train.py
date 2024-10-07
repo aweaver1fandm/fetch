@@ -94,19 +94,16 @@ def test_model(dataloader: DataLoader, model: nn.Module) -> None:
     with torch.no_grad():
         for freq_data, dm_data, label in dataloader:
 
-            print(f"Shape of label: {label.shape}", flush=True)
-            print(f"Shape of truth: {truth.shape}", flush=True)
-
             truth = torch.cat((truth, label))
 
             freq_data = freq_data.to(DEVICE)
             dm_data = dm_data.to(DEVICE)
             label = label.to(DEVICE)
 
+            # Get predictions from model and move to CPU
             pred = model(freq_data, dm_data)
+            pred = pred.to('cpu')
 
-            print(f"Shape of pred: {pred.shape}", flush=True)
-            print(f"Shape of predictions: {predictions.shape}", flush=True)
             predictions = torch.cat((predictions, pred))
             
     recall = binary_recall(predictions, truth)
