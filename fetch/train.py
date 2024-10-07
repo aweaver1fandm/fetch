@@ -106,7 +106,7 @@ def test_model(dataloader: DataLoader, model: nn.Module) -> None:
 
             print(f"pred shape: {pred.shape}")
             print(f"predictions shape: {predictions.shape}")
-            predictions = torch.cat((predictions, pred))
+            predictions = torch.cat((predictions, pred[0]))
             
     recall = binary_recall(predictions, truth)
     precision = binary_precision(predictions, truth)
