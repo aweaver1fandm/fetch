@@ -86,8 +86,8 @@ def test_model(dataloader: DataLoader, model: nn.Module) -> None:
     model.eval()
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
-    truth = torch.empty(0, 1)
-    predictions = torch.empty(0, 1)
+    truth = torch.empty(0)
+    predictions = torch.empty(0)
 
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
@@ -104,6 +104,9 @@ def test_model(dataloader: DataLoader, model: nn.Module) -> None:
             label = label.to(DEVICE)
 
             pred = model(freq_data, dm_data)
+
+            print(f"Shape of pred: {pred.shape}", flush=True)
+            print(f"Shape of predictions: {predictions.shape}", flush=True)
             predictions = torch.cat((predictions, pred))
             
     recall = binary_recall(predictions, truth)
@@ -183,6 +186,7 @@ def main():
     validate_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
 
     # Add some noise to freq data to help avoid overtraining
+    logger.info(f"Adding noise to training data")
     for freq_data, dm_data, label in train_dataloader:
         freq_data += torch.normal(0.0, 1.0, size=freq_data.shape)
 
