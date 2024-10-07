@@ -104,6 +104,8 @@ def test_model(dataloader: DataLoader, model: nn.Module) -> None:
             pred = model(freq_data, dm_data)
             pred = pred.to('cpu')
 
+            print(f"pred shape: {pred.shape}")
+            print(f"predictions shape: {predictions.shape}")
             predictions = torch.cat((predictions, pred))
             
     recall = binary_recall(predictions, truth)
