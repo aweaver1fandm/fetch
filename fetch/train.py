@@ -86,8 +86,8 @@ def test_model(dataloader: DataLoader, model: nn.Module) -> None:
     model.eval()
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
-    truth = torch.empty(0)
-    predictions = torch.empty(0)
+    truth = []
+    predictions = []
 
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
@@ -102,15 +102,15 @@ def test_model(dataloader: DataLoader, model: nn.Module) -> None:
 
             # Get predictions from model and move to CPU
             pred = model(freq_data, dm_data)
-            pred = pred.to('cpu')
-
-            print(f"pred shape: {pred.shape}")
-            print(f"predictions shape: {predictions.shape}")
-            predictions = torch.cat((predictions, pred[0]))
+            _, predicted = torch.max(pred, 1)
+            predictions.extend(predicted.to('cpu').numpy())
+            truth.extend(label.to('cpu').numpy())
             
-    recall = binary_recall(predictions, truth)
-    precision = binary_precision(predictions, truth)
-    f1 = binary_f1_score(predictions, truth)
+    pred_tensor = torch.tensor(predictions)
+    truth_tensor = torc.tensor(truth)
+    recall = binary_recall(pred_tensor, truth_tensor)
+    precision = binary_precision(pred_tensor, truth_tensor)
+    f1 = binary_f1_score(pred_tensor, truth_tensor)
 
     print(f"--- Test results ---\n Recall: {recall}\n Precision: {precision}\n F1: {f1}\n", flush=True)
 
