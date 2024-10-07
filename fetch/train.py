@@ -105,7 +105,7 @@ def test_model(dataloader: DataLoader, model: nn.Module) -> None:
             truth.extend(label.to('cpu').numpy())
             
     pred_tensor = torch.tensor(predictions)
-    truth_tensor = torc.tensor(truth)
+    truth_tensor = torch.tensor(truth)
     recall = binary_recall(pred_tensor, truth_tensor)
     precision = binary_precision(pred_tensor, truth_tensor)
     f1 = binary_f1_score(pred_tensor, truth_tensor)
