@@ -33,7 +33,7 @@ CNNPARAMS = {"densenet121": {"features":1024, "weights":"DenseNet121_Weights.DEF
              "xception": {"features":2048, "weights":None},
              "vgg16": {"features":512, "weights":"VGG16_Weights.DEFAULT"},
              "inceptionv2": {"features":1536, "weights":None},
-             "inceptionv3": {"features":2048, "weights":"Inception_V3_Weights.DEFAULT"},
+             "inception_v3": {"features":2048, "weights":"Inception_V3_Weights.DEFAULT"},
 }   
 
 class _CNNBlock(nn.Module):
