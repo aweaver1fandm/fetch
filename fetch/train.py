@@ -207,7 +207,7 @@ def main():
         model.eval()
 
         with torch.no_grad():
-            for i, freq_data, dm_data, labels in enumerate(validation_dataloader):
+            for i, freq_data, dm_data, labels in enumerate(validate_dataloader):
                 freq_data = freq_data.to(DEVICE)
                 dm_data = dm_data.to(DEVICE)
                 labels = labels.to(DEVICE)
