@@ -1,5 +1,4 @@
 import argparse
-import logging
 import os
 import string
 import glob
@@ -16,9 +15,6 @@ from fetch.model import PulsarModel
 
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-logger = logging.getLogger(__name__)
-LOGGINGFORMAT = ("%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s")
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
@@ -77,7 +73,7 @@ def evaluate_loop(dataloader: DataLoader, model: nn.Module, loss_fn) -> None:
 
     test_loss /= num_batches
     correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n", flush=True)
+    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
 def test_model(dataloader: DataLoader, model: nn.Module) -> None:
     r"""
@@ -110,30 +106,29 @@ def test_model(dataloader: DataLoader, model: nn.Module) -> None:
     precision = binary_precision(pred_tensor, truth_tensor)
     f1 = binary_f1_score(pred_tensor, truth_tensor)
 
-    print(f"--- Test results ---\n Recall: {recall}\n Precision: {precision}\n F1: {f1}\n", flush=True)
+    print(f"--- Test results ---")
+    print(f"\tRecall: {(100*recall):.2f}%")
+    print(f"\tPrecision: {(100*precision):.2f}%")
+    print(f"\tF1: {(100*f1):.2f}%")
 
 def main():
     parser = argparse.ArgumentParser(
         description="Fast Extragalactic Transient Candiate Hunter (FETCH)"
     )
-    parser.add_argument("-v", "--verbose", help="Be verbose", action="store_true")
     parser.add_argument(
         "-g", "--gpu_id", help="GPU ID", type=int, required=False, default=0
     )
     parser.add_argument(
-        "-n", "--nproc", help="Number of processors for training", default=4, type=int
-    )
-    parser.add_argument(
         "-trn",
         "--train_data_dir",
-        help="Directory containing h5 files for training.  Assumes the files contain labels",
+        help="Directory containing h5 file(s) for training.  Assumes the file(s) contain labels",
         required=True,
         type=str,
     )
     parser.add_argument(
         "-tst",
         "--test_data_dir",
-        help="Directory containing h5 files for testing.  Assumes the files contain labels",
+        help="Directory containing h5 file(s) for testing.  Assumes the file(s) contain labels",
         type=str,
         default=None,
     )
@@ -159,20 +154,13 @@ def main():
     )
     args = parser.parse_args()
 
-    logging_format = ("%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s")
-
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG, format=logging_format)
-    else:
-        logging.basicConfig(level=logging.INFO, format=logging_format)
-
     if args.model not in list(string.ascii_lowercase)[:11]:
         raise ValueError(f"Model only range from a -- j.")
 
     if args.gpu_id:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
 
-    logger.info(f"Using {DEVICE} for computation")
+    print(f"Using {DEVICE} for computation")
 
     # Load training and split 85% to 15% into train/validate
     train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
@@ -183,7 +171,7 @@ def main():
     validate_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
 
     # Add some noise to freq data to help avoid overtraining
-    logger.info(f"Adding noise to training data")
+    print(f"Adding noise to training data")
     for freq_data, dm_data, label in train_dataloader:
         freq_data += torch.normal(0.0, 1.0, size=freq_data.shape)
 
@@ -196,7 +184,7 @@ def main():
 
     # Train the model
     for t in range(args.epochs):
-        print(f"Epoch {t+1}\n-------------------------------", flush=True)
+        print(f"Epoch {t+1}\n-------------------------------")
         train_loop(train_dataloader, model, loss_fn, optimizer, args.batch_size)
         evaluate_loop(validate_dataloader, model, loss_fn)
 

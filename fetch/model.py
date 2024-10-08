@@ -3,8 +3,6 @@ All the models have the same broad architecture.  The biggest
 difference between them is the CNN model used to
 to process the freq and dm data.
 """
-import logging
-
 import torch
 import torch.nn as nn
 import torchvision.models as models
@@ -24,7 +22,7 @@ MODELPARAMS = {"a": {"freq":"densenet121", "dm":"xception", "features":256},
                "h": {"freq":"densenet201", "dm":"inceptionv2", "features":160},
                "i": {"freq":"densenet201", "dm":"vgg16", "features":32},
                "j": {"freq":"vgg19", "dm":"inceptionv2", "features":512},
-               "k": {"freq":"densenet121", "dm":"inceptionv3", "features":64},
+               "k": {"freq":"densenet121", "dm":"inception_v3", "features":64},
 }
 
 # Paramaters related to different pre-trained CNN models
@@ -37,9 +35,6 @@ CNNPARAMS = {"densenet121": {"features":1024, "weights":"DenseNet121_Weights.DEF
              "inceptionv2": {"features":1536, "weights":None},
              "inceptionv3": {"features":2048, "weights":"Inception_V3_Weights.DEFAULT"},
 }   
-
-logger = logging.getLogger(__name__)
-LOGGINGFORMAT = ("%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s")
 
 class _CNNBlock(nn.Module):
     def __init__(self, model: str, data_type: str) -> None:
@@ -113,9 +108,9 @@ class PulsarModel(nn.Module):
 
         features = MODELPARAMS[model]["features"]
     
-        logger.info(f"Building pulsar model: {model}")
-        logger.info(f"Using {MODELPARAMS[model]['freq']} for frequency data processing")
-        logger.info(f"Using {MODELPARAMS[model]['dm']} for DM data processing")
+        print(f"Building pulsar model: {model}")
+        print(f"Using {MODELPARAMS[model]['freq']} for frequency data processing")
+        print(f"Using {MODELPARAMS[model]['dm']} for DM data processing")
 
         self.freq_model = _CNNBlock(model, "freq")
         self.dm_model = _CNNBlock(model, "dm")

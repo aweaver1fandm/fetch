@@ -1,4 +1,3 @@
-import logging
 import os
 import sys
 
@@ -13,21 +12,15 @@ import glob
 from torch.utils.data import DataLoader
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
-logger = logging.getLogger(__name__)
-LOGGINGFORMAT = ("%(asctime)s - %(funcName)s -%(name)s - %(levelname)s - %(message)s")
 
 class PulsarData(Dataset):
     def __init__(
         self,
         files: list,
-        labels: list = [],
         ft_dim: tuple = (256, 256),
         dt_dim: tuple = (256, 256),
         n_channels:int = 1,
         n_classes: int = 2,
-        noise:bool = False,
-        noise_mean: float = 0.0,
-        noise_std: float = 1.0,
     ) -> None:
         r"""
 
@@ -37,9 +30,6 @@ class PulsarData(Dataset):
         :param dt_dim: 2D shape (def (256, 256)
         :param n_channels: number of channels in data (def = 1)
         :param n_classes: number of classes to classify data into (def = 2)
-        :param noise: to add noise or not to?
-        :param noise_mean: mean of gaussian noise
-        :param noise_std: standard deviation of gaussian noise
         """
     
         self.ft_dim = ft_dim
@@ -47,10 +37,6 @@ class PulsarData(Dataset):
         self.files = files
         self.n_channels = n_channels
         self.n_classes = n_classes
-        self.noise = noise
-        self.labels = labels
-        self.noise_mean = noise_mean
-        self.noise_std = noise_std
 
         self.num_observations = 0
         self.ft_data = np.empty((0, *self.ft_dim))
@@ -58,7 +44,6 @@ class PulsarData(Dataset):
         self.labels = np.empty(0, dtype=int)
         
         for f in files:
-            logger.info(f"Processing file: {f}")
             self._data_from_h5(f)
 
     def __len__(self)-> int:
@@ -90,9 +75,6 @@ class PulsarData(Dataset):
         ft_data = np.reshape(ft_data, (self.n_channels, *self.ft_dim))
         dt_data = np.reshape(dt_data, (self.n_channels, *self.dt_dim))
 
-        #if self.noise:
-        #    ft_data += np.random.normal(loc=self.noise_mean, scale=self.noise_std, size=ft_data.shape)
-
         return ft_data, dt_data, self.labels[index]
         
     def _data_from_h5(self, file: str) -> None:
@@ -113,10 +95,10 @@ class PulsarData(Dataset):
 
         data = h5py.File(file, 'r')
         if "data_freq_time" not in data:
-            logger.error(f"{file} does not contain data with name data_freq_data")
+            print(f"ERROR: {file} does not contain data with name data_freq_data")
             sys.exit(1)
         if "data_dm_time" not in data:
-            logger.error(f"{file} does not contain data with name data_dm_data")
+            print(f"ERROR: {file} does not contain data with name data_dm_data")
             sys.exit(1)
         freq_data = np.array(data["data_freq_time"][:])
         dm_data = np.array(data["data_dm_time"][:])
@@ -148,23 +130,22 @@ class PulsarData(Dataset):
             freq_data = np.reshape(freq_data, (1, shape[0], shape[1]))
             dm_data = np.reshape(dm_data, (1, shape[0], shape[1]))
         else:
-            logger.error(f"{file} contains one or more observations in an unexpected format...{shape}")
+            print(f"ERROR: {file} contains one or more observations in an unexpected format...{shape}")
             sys.exit(1)
 
         # Make sure the data dimensions are good
         if data_dims != self.ft_dim:
-            logger.error(f"Data shape {data_dim} does not match expected dimensions {self.ft_dim}")
+            print(f"ERROR: Data shape {data_dim} does not match expected dimensions {self.ft_dim}")
             sys.exit(1)
 
-        logger.info(f"Adding {num_observations} observations to data set")
+        print(f"Adding {num_observations} observations to data set")
         self.ft_data = np.append(self.ft_data, freq_data, axis=0)
         self.dt_data = np.append(self.dt_data, dm_data, axis=0)
         self.num_observations += num_observations
         
         # Handle the labels if they exist
         if "data_labels" in data:
-            logger.info(f"Input file contains labels")
+            print(f"Input file does contain labels")
             self.labels = np.append(self.labels, data["data_labels"])
         else:
-            logger.info(f"Input file does not contains labels")
             self.labels = np.append(self.labels, np.empty(num_observations, dtype=int))
