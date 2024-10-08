@@ -22,31 +22,42 @@ def train_loop(dataloader: DataLoader,
                model: nn.Module, 
                loss_fn, 
                optimizer,
-               batch_size: int) -> None:
+               batch_size: int) -> float:
     r"""
     """
-    size = len(dataloader.dataset)
-    
+    running_loss = 0.0
+    last_loss = 0.0
+
     # Set the model to training mode - important for batch normalization and dropout layers
     model.train()
-    for batch, (freq_data, dm_data, label) in enumerate(dataloader): 
+
+    for i, (freq_data, dm_data, label) in enumerate(dataloader): 
         
+        # Load model to GPU/CPU
         freq_data = freq_data.to(DEVICE)
         dm_data = dm_data.to(DEVICE)
         label = label.to(DEVICE)
 
-        # Compute prediction and loss
+        # Make prediction
         pred = model(freq_data, dm_data)
-        loss = loss_fn(pred, label)
 
-        # Backpropagation
+        # Compute loss and gradient
+        loss = loss_fn(pred, label)
         loss.backward()
+
+        # Adjust learning weights
         optimizer.step()
+
+        # Zero  gradient for next batch
         optimizer.zero_grad()
 
-        if batch % 100 == 0:
-            loss, current = loss.item(), batch * batch_size + len(freq_data)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
+        running_loss += loss.item()
+        if i % 1000 == 999:
+            last_loss = running_loss / 1000
+            print(f"{i + 1} loss: {last_loss:4f}", flush=True)
+            running_loss = 0.0
+
+    return last_loss
 
 def evaluate_loop(dataloader: DataLoader, model: nn.Module, loss_fn) -> None:
     r"""
@@ -183,11 +194,41 @@ def main():
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(params=model.parameters(), lr=args.learning_rate)
 
-    # Train the model
+    # Train the model/validate model
+    best_model_path = ""
+    best_vloss = 1000000.0
+
     for t in range(args.epochs):
         print(f"Epoch {t+1}\n-------------------------------", flush=True)
-        train_loop(train_dataloader, model, loss_fn, optimizer, args.batch_size)
-        evaluate_loop(validate_dataloader, model, loss_fn)
+        avg_loss = train_loop(train_dataloader, model, loss_fn, optimizer, args.batch_size)
+        
+        # Perform validation to see how training is going
+        running_vloss = 0.0
+        model.eval()
+
+        with torch.no_grad():
+            for i, freq_data, dm_data, labels in enumerate(validation_dataloader):
+                freq_data = freq_data.to(DEVICE)
+                dm_data = dm_data.to(DEVICE)
+                labels = labels.to(DEVICE)
+
+                vpreds = model(freq_data, dm_data)
+                vloss = loss_fn(vpreds, labels)
+                running_vloss += vloss
+
+        avg_vloss = running_vloss / (i+1)
+        print(f"Loss training: {avg_loss:4f}  Loss validation: {avg_vloss:4f}", flush=True)
+
+        # Track best model perfomance
+        if avg_vloss < best_vloss:
+            best_vloss = avg_vloss
+            model_path = f"model_{args.model}_epoch{t+1}"
+            best_model_path = model_path
+            torch.save(model.state_dict(), model_path)
+
+    # Load the best saved model
+    model = PulsarModel(args.model)
+    model.load_state_dict(torch.load(best_model_path))
 
     # Test the trained model
     if args.test_data_dir is not None:
@@ -198,5 +239,5 @@ def main():
         test_model(test_dataloader, model)
 
     # Save the model weights
-    weight_file = "/model_" + args.model + "_weights.pth"
+    weight_file = f"/model_{args.model}_weights.pth"
     torch.save(model.state_dict(), args.output_path + weight_file)
