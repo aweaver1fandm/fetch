@@ -164,7 +164,7 @@ def main():
 
     # Load training and split 85% to 15% into train/validate
     train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
-    train_data = PulsarData(files=train_data_files, noise=True)
+    train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
 
     train_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
