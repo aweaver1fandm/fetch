@@ -59,9 +59,9 @@ def main():
     # Get the model and set it to eval mode
     model = PulsarModel(args.model)
     path = os.path.split(__file__)[0]
-    model = torch.load(f"{args.weights}/model_{args.model}_weights.pth", weights_only=True)
-    model.to(DEVICE)
+    model.load_state_dict(torch.load(f"{args.weights}/model_{args.model}_weights.pth", weights_only=True))
     model.eval()
+    model.to(DEVICE)
     
     for data_dir in args.data_dir:
 
