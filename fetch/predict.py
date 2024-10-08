@@ -59,7 +59,7 @@ def main():
     # Get the model and set it to eval mode
     model = PulsarModel(args.model)
     path = os.path.split(__file__)[0]
-    model = torch.load(f"{args.weight}/model_{args.model}_weights.pth", weights_only=True)
+    model = torch.load(f"{args.weights}/model_{args.model}_weights.pth", weights_only=True)
     model.to(DEVICE)
     model.eval()
     
