@@ -73,7 +73,7 @@ def main():
             continue
 
         # Setup the candidate data
-        inputs = PulsarData(list_IDs=cands_to_eval)
+        inputs = PulsarData(files=cands_to_eval)
         dataloader = DataLoader(inputs, shuffle=False)
 
         # Make predictions in batches
