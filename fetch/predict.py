@@ -80,7 +80,7 @@ def main():
         predictions = []
         probs = []
         with torch.no_grad():
-            for freq_data, dm_data, predictions in dataloader:
+            for freq_data, dm_data, labels in dataloader:
                 freq_data = freq_data.to(DEVICE)
                 dm_data = dm_data.to(DEVICE)
 
