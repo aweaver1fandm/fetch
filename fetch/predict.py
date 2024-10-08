@@ -82,7 +82,7 @@ def main():
         with torch.no_grad():
             for freq_data, dm_data, predictions in dataloader:
                 freq_data = freq_data.to(DEVICE)
-                dm_data - dm_data.to(DEVICE)
+                dm_data = dm_data.to(DEVICE)
 
                 preds = model(inputs)
 
