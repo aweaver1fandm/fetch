@@ -229,6 +229,7 @@ def main():
     # Load the best saved model
     model = PulsarModel(args.model)
     model.load_state_dict(torch.load(best_model_path))
+    model.to(DEVICE)
 
     # Test the trained model
     if args.test_data_dir is not None:
