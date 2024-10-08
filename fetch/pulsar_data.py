@@ -95,10 +95,10 @@ class PulsarData(Dataset):
 
         data = h5py.File(file, 'r')
         if "data_freq_time" not in data:
-            print(f"ERROR: {file} does not contain data with name data_freq_data")
+            print(f"ERROR: {file} does not contain data with name data_freq_data", flush=True)
             sys.exit(1)
         if "data_dm_time" not in data:
-            print(f"ERROR: {file} does not contain data with name data_dm_data")
+            print(f"ERROR: {file} does not contain data with name data_dm_data", flush=True)
             sys.exit(1)
         freq_data = np.array(data["data_freq_time"][:])
         dm_data = np.array(data["data_dm_time"][:])
@@ -130,22 +130,21 @@ class PulsarData(Dataset):
             freq_data = np.reshape(freq_data, (1, shape[0], shape[1]))
             dm_data = np.reshape(dm_data, (1, shape[0], shape[1]))
         else:
-            print(f"ERROR: {file} contains one or more observations in an unexpected format...{shape}")
+            print(f"ERROR: {file} contains one or more observations in an unexpected format...{shape}", flush=True)
             sys.exit(1)
 
         # Make sure the data dimensions are good
         if data_dims != self.ft_dim:
-            print(f"ERROR: Data shape {data_dim} does not match expected dimensions {self.ft_dim}")
+            print(f"ERROR: Data shape {data_dim} does not match expected dimensions {self.ft_dim}", flush=True)
             sys.exit(1)
 
-        print(f"Adding {num_observations} observations to data set")
         self.ft_data = np.append(self.ft_data, freq_data, axis=0)
         self.dt_data = np.append(self.dt_data, dm_data, axis=0)
         self.num_observations += num_observations
         
         # Handle the labels if they exist
         if "data_labels" in data:
-            print(f"Input file does contain labels")
+            print(f"Input file does contain labels", flush=True)
             self.labels = np.append(self.labels, data["data_labels"])
         else:
             self.labels = np.append(self.labels, np.empty(num_observations, dtype=int))

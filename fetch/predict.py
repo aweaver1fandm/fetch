@@ -54,7 +54,7 @@ def main():
     if args.gpu_id >= 0:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
 
-    print(f"Using {DEVICE} for computation")
+    print(f"Using {DEVICE} for computation", flush=True)
 
     # Get the model and set it to eval mode
     model = PulsarModel(args.model)
@@ -69,7 +69,7 @@ def main():
         cands_to_eval = glob.glob(f"{data_dir}/*h*5")
 
         if len(cands_to_eval) == 0:
-            print(f"No candidates to evaluate in directory: {data_dir}")
+            print(f"No candidates to evaluate in directory: {data_dir}", flush=True)
             continue
 
         # Setup the candidate data
@@ -84,7 +84,7 @@ def main():
                 freq_data = freq_data.to(DEVICE)
                 dm_data = dm_data.to(DEVICE)
 
-                preds = model(inputs)
+                preds = model(freq_data, dm_data)
 
                 preds = preds.to('cpu').numpy()
                 probs.extend(preds[:, 1])

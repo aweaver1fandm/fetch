@@ -106,10 +106,10 @@ def test_model(dataloader: DataLoader, model: nn.Module) -> None:
     precision = binary_precision(pred_tensor, truth_tensor)
     f1 = binary_f1_score(pred_tensor, truth_tensor)
 
-    print(f"--- Test results ---")
-    print(f"\tRecall: {(100*recall):.2f}%")
-    print(f"\tPrecision: {(100*precision):.2f}%")
-    print(f"\tF1: {(100*f1):.2f}%")
+    print(f"--- Test results ---", flush=True)
+    print(f"\tRecall: {(100*recall):.2f}%", flush=True)
+    print(f"\tPrecision: {(100*precision):.2f}%", flush=True)
+    print(f"\tF1: {(100*f1):.2f}%", flush=True)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -160,7 +160,7 @@ def main():
     if args.gpu_id:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
 
-    print(f"Using {DEVICE} for computation")
+    print(f"Using {DEVICE} for computation", flush=True)
 
     # Load training and split 85% to 15% into train/validate
     train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
@@ -171,7 +171,7 @@ def main():
     validate_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
 
     # Add some noise to freq data to help avoid overtraining
-    print(f"Adding noise to training data")
+    print(f"Adding noise to training data", flush=True)
     for freq_data, dm_data, label in train_dataloader:
         freq_data += torch.normal(0.0, 1.0, size=freq_data.shape)
 
@@ -184,7 +184,7 @@ def main():
 
     # Train the model
     for t in range(args.epochs):
-        print(f"Epoch {t+1}\n-------------------------------")
+        print(f"Epoch {t+1}\n-------------------------------", flush=True)
         train_loop(train_dataloader, model, loss_fn, optimizer, args.batch_size)
         evaluate_loop(validate_dataloader, model, loss_fn)
 
