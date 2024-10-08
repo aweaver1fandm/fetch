@@ -12,7 +12,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from fetch.pulsar_data import PulsarData
-from fetch.model import PulsarModel
+from fetch.model import PulsarModel, MODELPARAMS
 
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -48,8 +48,8 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.model not in list(string.ascii_lowercase)[:11]:
-        raise ValueError(f"Model only range from a -- j.")
+    if args.model not in MODELPARAMS:
+        raise ValueError(f"Model only range from a -- k.")
 
     if args.gpu_id >= 0:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"

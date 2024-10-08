@@ -11,7 +11,7 @@ from torchvision import datasets
 from torcheval.metrics.functional import binary_precision, binary_recall, binary_f1_score
 
 from fetch.pulsar_data import PulsarData
-from fetch.model import PulsarModel
+from fetch.model import PulsarModel, MODELPARAMS
 
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -154,8 +154,8 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.model not in list(string.ascii_lowercase)[:11]:
-        raise ValueError(f"Model only range from a -- j.")
+    if args.model not in MODELPARAMS:
+        raise ValueError(f"Model only range from a -- k.")
 
     if args.gpu_id:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
@@ -173,7 +173,8 @@ def main():
     # Add some noise to freq data to help avoid overtraining
     print(f"Adding noise to training data", flush=True)
     for freq_data, dm_data, label in train_dataloader:
-        freq_data += torch.normal(0.0, 1.0, size=freq_data.shape)
+        #freq_data += torch.normal(0.0, 1.0, size=freq_data.shape)
+        freq_data += torch.randn(freq_data.size()) * 1 + 0
 
     # Build the model and push it to proper compute device
     model = PulsarModel(args.model).to(DEVICE)
