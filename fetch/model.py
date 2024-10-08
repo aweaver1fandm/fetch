@@ -110,7 +110,7 @@ class PulsarModel(nn.Module):
     
         print(f"Building pulsar model: {model}", flush=True)
         print(f"Using {MODELPARAMS[model]['freq']} for frequency data processing", flush=True)
-        print(f"Using {MODELPARAMS[model]['dm']} for DM data processing"), flush=True
+        print(f"Using {MODELPARAMS[model]['dm']} for DM data processing", flush=True)
 
         self.freq_model = _CNNBlock(model, "freq")
         self.dm_model = _CNNBlock(model, "dm")
