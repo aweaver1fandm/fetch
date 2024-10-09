@@ -43,7 +43,7 @@ class PreTrainedBlock(nn.Module):
             )
 
         # Get the pre-trained model from PyTorch
-        self.pretrained = torch.hub.load("pytorch/vision", model, weights=weights)
+        self.pretrained = torch.hub.load("pytorch/vision", model.lower(), weights=weights)
 
         # Freeze all layers of the pre-trained model
         for param in self.pretrained.parameters():
