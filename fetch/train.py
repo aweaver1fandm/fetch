@@ -24,6 +24,7 @@ def train_submodel(train: DataLoader,
                    component: str,
                    batch_size: int,
                    learning_rate: float,
+                   epochs
                    ) -> None:
     r"""
 
@@ -54,7 +55,7 @@ def train_submodel(train: DataLoader,
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate)
 
-    for t in range(args.epochs):
+    for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------", flush=True)
 
         # Train the model
@@ -73,6 +74,7 @@ def train_fullmodel(train: DataLoader,
                    component: str,
                    batch_size: int,
                    learning_rate: float,
+                   epochs,
                    ) -> None:
     r"""
 
@@ -91,7 +93,7 @@ def train_fullmodel(train: DataLoader,
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate)
 
-    for t in range(args.epochs):
+    for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------", flush=True)
 
         # Train the model
@@ -284,9 +286,9 @@ def main():
     validate_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
 
     if args.model in PreTrainedBlock.PARAMS:
-        train_submodel(train_dataloader, validate_dataloader, args.model, args.batch_size, args.learning_rate)
+        train_submodel(train_dataloader, validate_dataloader, args.model, args.batch_size, args.learning_rate, args.epochs)
     elif args.model in PulsarModel.PARAMS:
-        train_fullmodel(train_dataloader, validate_dataloader, args.model, args.batch_size, args.learning_rate)
+        train_fullmodel(train_dataloader, validate_dataloader, args.model, args.batch_size, args.learning_rate, args.epochs)
     else:
         print(f"Invalid model argument given {args.model}")
         sys.exit(1)
