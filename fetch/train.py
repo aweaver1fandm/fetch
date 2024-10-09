@@ -22,42 +22,65 @@ def train_loop(dataloader: DataLoader,
                model: nn.Module, 
                loss_fn, 
                optimizer,
-               batch_size: int) -> float:
+               batch_size: int) -> None:
     r"""
     """
-    running_loss = 0.0
-    last_loss = 0.0
+    size = len(dataloader.dataset)
+    print(f"Size of training data set: {size}", flush=True)
 
     # Set the model to training mode - important for batch normalization and dropout layers
     model.train()
 
-    for batch, (freq_data, dm_data, label) in enumerate(dataloader): 
+    for batch, (freq_data, dm_data, label) in enumerate(dataloader):
+
+        # Add some noise to freq data to help avoid overtraining
+        freq_data += torch.randn(freq_data.size()) * 1.0 + 0.0
         
         # Load model to GPU/CPU
         freq_data = freq_data.to(DEVICE)
         dm_data = dm_data.to(DEVICE)
         label = label.to(DEVICE)
 
-        # Make prediction
+        # Make prediction and compute loss
         pred = model(freq_data, dm_data)
-
-        # Compute loss and gradient
         loss = loss_fn(pred, label)
+
+        # Backpropogate
         loss.backward()
-
-        # Adjust learning weights
         optimizer.step()
-
-        # Zero  gradient for next batch
         optimizer.zero_grad()
 
-        running_loss += loss.item()
-        if batch % batch_size == 0:
-            last_loss = running_loss / batch_size
-            print(f"{batch} loss: {last_loss:.4f}", flush=True)
-            running_loss = 0.0
+        if batch % 100 == 0:
+            loss, current = loss.item(), batch * batch_size + len(X)
+            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+    
+def validate_loop(dataloader: DataLoader, model: nn.Module, loss_fn) -> float:
+    
+    model.eval()
+    size = len(dataloader.dataset)
+    num_batches = len(dataloader)
+    test_loss, correct = 0, 0
 
-    return last_loss
+    # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
+    # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
+    with torch.no_grad():
+        for freq_data, dm_data, label in dataloader:
+            # Load model to GPU/CPU
+            freq_data = freq_data.to(DEVICE)
+            dm_data = dm_data.to(DEVICE)
+            label = label.to(DEVICE)
+
+            # Make prediction and compute loss
+            pred = model(freq_data, dm_data)
+            
+            test_loss += loss_fn(pred, label).item()
+            correct += (pred.argmax(1) == label).type(torch.float).sum().item()
+
+    test_loss /= num_batches
+    correct /= size
+    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+
+    return test_loss
 
 def test_model(dataloader: DataLoader, model: nn.Module) -> None:
     r"""
@@ -168,32 +191,11 @@ def main():
     for t in range(args.epochs):
         print(f"Epoch {t+1}\n-------------------------------", flush=True)
 
-        # Add some noise to freq data to help avoid overtraining
-        print(f"Adding noise to training data", flush=True)
-        for freq_data, dm_data, label in train_dataloader:
-            freq_data += torch.randn(freq_data.size()) * 1.0 + 0.0
-
         # Train the model
-        avg_loss = train_loop(train_dataloader, model, loss_fn, optimizer, args.batch_size)
+        train_loop(train_dataloader, model, loss_fn, optimizer, args.batch_size)
         
-        # Perform validation to see how training is going
-        running_vloss = 0.0
-        model.eval()
-
-        with torch.no_grad():
-            for i, (freq_data, dm_data, labels) in enumerate(validate_dataloader):
-                freq_data = freq_data.to(DEVICE)
-                dm_data = dm_data.to(DEVICE)
-                labels = labels.to(DEVICE)
-
-                vpreds = model(freq_data, dm_data)
-                vloss = loss_fn(vpreds, labels)
-                running_vloss += vloss
-
-        avg_vloss = running_vloss / (i+1)
-        print(f"Loss training: {avg_loss:.4f}  Loss validation: {avg_vloss:.4f}", flush=True)
-
         # Track best model perfomance
+        avg_vloss = validate_loop(validate_dataloader, model, loss_fn)
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
             model_path = f"model_{args.model}_epoch{t+1}"

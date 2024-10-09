@@ -20,7 +20,6 @@ class PulsarData(Dataset):
         ft_dim: tuple = (256, 256),
         dt_dim: tuple = (256, 256),
         n_channels:int = 1,
-        n_classes: int = 2,
     ) -> None:
         r"""
 
@@ -29,14 +28,12 @@ class PulsarData(Dataset):
         :param ft_dim: 2D shape (def (256, 256)
         :param dt_dim: 2D shape (def (256, 256)
         :param n_channels: number of channels in data (def = 1)
-        :param n_classes: number of classes to classify data into (def = 2)
         """
     
         self.ft_dim = ft_dim
         self.dt_dim = dt_dim
         self.files = files
         self.n_channels = n_channels
-        self.n_classes = n_classes
 
         self.num_observations = 0
         self.ft_data = np.empty((0, *self.ft_dim))

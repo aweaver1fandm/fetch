@@ -6,7 +6,6 @@ to process the freq and dm data.
 import torch
 import torch.nn as nn
 import torchvision.models as models
-#import xception as xc
 
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
