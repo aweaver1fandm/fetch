@@ -51,7 +51,7 @@ def train_loop(dataloader: DataLoader,
         optimizer.zero_grad()
 
         if batch % 100 == 0:
-            loss, current = loss.item(), batch * batch_size + len(X)
+            loss, current = loss.item(), batch * batch_size + len(freq_data)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
     
 def validate_loop(dataloader: DataLoader, model: nn.Module, loss_fn) -> float:
