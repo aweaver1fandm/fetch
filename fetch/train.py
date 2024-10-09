@@ -31,7 +31,7 @@ def train_loop(dataloader: DataLoader,
     # Set the model to training mode - important for batch normalization and dropout layers
     model.train()
 
-    for i, (freq_data, dm_data, label) in enumerate(dataloader): 
+    for batch, (freq_data, dm_data, label) in enumerate(dataloader): 
         
         # Load model to GPU/CPU
         freq_data = freq_data.to(DEVICE)
@@ -52,39 +52,12 @@ def train_loop(dataloader: DataLoader,
         optimizer.zero_grad()
 
         running_loss += loss.item()
-        if i % 1000 == 999:
-            last_loss = running_loss / 1000
-            print(f"{i + 1} loss: {last_loss:4f}", flush=True)
+        if batch % batch_size == 0:
+            last_loss = running_loss / batch_size
+            print(f"{batch} loss: {last_loss:.4f}", flush=True)
             running_loss = 0.0
 
     return last_loss
-
-def evaluate_loop(dataloader: DataLoader, model: nn.Module, loss_fn) -> None:
-    r"""
-    """
-
-    # Set the model to evaluation mode - important for batch normalization and dropout layers
-    model.eval()
-    size = len(dataloader.dataset)
-    num_batches = len(dataloader)
-    test_loss, correct = 0, 0
-
-    # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
-    # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
-    with torch.no_grad():
-        for freq_data, dm_data, label in dataloader:
-
-            freq_data = freq_data.to(DEVICE)
-            dm_data = dm_data.to(DEVICE)
-            label = label.to(DEVICE)
-
-            pred = model(freq_data, dm_data)
-            test_loss += loss_fn(pred, label).item()
-            correct += (pred.argmax(1) == label).type(torch.float).sum().item()
-
-    test_loss /= num_batches
-    correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
 def test_model(dataloader: DataLoader, model: nn.Module) -> None:
     r"""
@@ -181,13 +154,7 @@ def main():
     train_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
     validate_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
 
-    # Add some noise to freq data to help avoid overtraining
-    print(f"Adding noise to training data", flush=True)
-    for freq_data, dm_data, label in train_dataloader:
-        #freq_data += torch.normal(0.0, 1.0, size=freq_data.shape)
-        freq_data += torch.randn(freq_data.size()) * 1 + 0
-
-    # Build the model and push it to proper compute device
+    # Build the model and load it on proper compute device
     model = PulsarModel(args.model).to(DEVICE)
 
     # Setup additional training parameters
@@ -200,6 +167,13 @@ def main():
 
     for t in range(args.epochs):
         print(f"Epoch {t+1}\n-------------------------------", flush=True)
+
+        # Add some noise to freq data to help avoid overtraining
+        print(f"Adding noise to training data", flush=True)
+        for freq_data, dm_data, label in train_dataloader:
+            freq_data += torch.normal(0.0, 1.0, size=freq_data.shape)
+            freq_data += torch.randn(freq_data.size()) * 1 + 0
+
         avg_loss = train_loop(train_dataloader, model, loss_fn, optimizer, args.batch_size)
         
         # Perform validation to see how training is going
@@ -217,7 +191,7 @@ def main():
                 running_vloss += vloss
 
         avg_vloss = running_vloss / (i+1)
-        print(f"Loss training: {avg_loss:4f}  Loss validation: {avg_vloss:4f}", flush=True)
+        print(f"Loss training: {avg_loss:.4f}  Loss validation: {avg_vloss:.4f}", flush=True)
 
         # Track best model perfomance
         if avg_vloss < best_vloss:
@@ -228,7 +202,7 @@ def main():
 
     # Load the best saved model
     model = PulsarModel(args.model)
-    model.load_state_dict(torch.load(best_model_path))
+    model.load_state_dict(torch.load(best_model_path), weights_only=True)
     model.to(DEVICE)
 
     # Test the trained model
