@@ -284,9 +284,9 @@ def main():
     validate_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
 
     if args.model in PreTrainedBlock.PARAMS:
-        train_submodel(train_dataloader, validate_dataloader args.model, args.batch_size, args.learning_rate)
+        train_submodel(train_dataloader, validate_dataloader, args.model, args.batch_size, args.learning_rate)
     elif args.model in PulsarModel.PARAMS:
-        train_fullmodel(train_dataloader, validate_dataloader args.model, args.batch_size, args.learning_rate)
+        train_fullmodel(train_dataloader, validate_dataloader, args.model, args.batch_size, args.learning_rate)
     else:
         print(f"Invalid model argument given {args.model}")
         sys.exit(1)
