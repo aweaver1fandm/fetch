@@ -18,32 +18,12 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
-def train_submodel(dataloader: DataLoader,
-                   component: str):
-    r"""
-
-    Performs training/validation for a sub-component of the PulsarModel
-    The sub-component here will be a pre-trained model to process either 
-    frequency or DM data
-
-    General procedure per the paper by Devansh et al.(https://arxiv.org/pdf/1902.06343)
-
-    1. Train model with binary classification until validation loss
-       stops decreasing for at least 3 consecutive epochs
-    2. Unfreeze a layer and repeat training per step 1
-    3???
-    """
-
-    unfrozen_layers = 0
-
 def train_loop(dataloader: DataLoader, 
                model: nn.Module, 
                loss_fn, 
                optimizer,
                batch_size: int) -> None:
     r"""
-
-    Perform a single pass of training for the full PulsarModel
     """
     size = len(dataloader.dataset)
     print(f"Size of training data set: {size}", flush=True)
@@ -75,11 +55,7 @@ def train_loop(dataloader: DataLoader,
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
     
 def validate_loop(dataloader: DataLoader, model: nn.Module, loss_fn) -> float:
-    r"""
     
-    Performs a single validation pass for the full PulsarModel
-    """
-
     model.eval()
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
@@ -108,8 +84,6 @@ def validate_loop(dataloader: DataLoader, model: nn.Module, loss_fn) -> float:
 
 def test_model(dataloader: DataLoader, model: nn.Module) -> None:
     r"""
-
-    Test  a fully trained PulsarModel
     """
     # Set the model to evaluation mode - important for batch normalization and dropout layers
     model.eval()

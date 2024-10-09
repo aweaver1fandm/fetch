@@ -10,89 +10,78 @@ import torchvision.models as models
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Key paramters for the different pulsar models
-MODELPARAMS = {"a": {"freq":"densenet121", "dm":"xception", "features":256},
-               "b": {"freq":"densenet121", "dm":"vgg16", "features":32},
-               "c": {"freq":"densenet169", "dm":"xception", "features":112},
-               "d": {"freq":"densenet201", "dm":"xception", "features":32},
-               "e": {"freq":"vgg19", "dm":"xception", "features":128},
-               "f": {"freq":"densenet169", "dm":"vgg16", "features":512},
-               "g": {"freq":"vgg19", "dm":"vgg16", "features":128},
-               "h": {"freq":"densenet201", "dm":"inceptionv2", "features":160},
-               "i": {"freq":"densenet201", "dm":"vgg16", "features":32},
-               "j": {"freq":"vgg19", "dm":"inceptionv2", "features":512},
-               "k": {"freq":"densenet121", "dm":"inception_v3", "features":64},
-}
-
-# Paramaters related to different pre-trained CNN models
-CNNPARAMS = {"densenet121": {"features":1024, "weights":"DenseNet121_Weights.DEFAULT"},
-             "densenet169": {"features":1664, "weights":"DenseNet169_Weights.DEFAULT"},
-             "densenet201": {"features":1920, "weights":"DenseNet201_Weights.DEFAULT"},
-             "vgg19": {"features":512, "weights":"VGG19_Weights.DEFAULT"},
-             "xception": {"features":2048, "weights":None},
-             "vgg16": {"features":512, "weights":"VGG16_Weights.DEFAULT"},
-             "inceptionv2": {"features":1536, "weights":None},
-             "inception_v3": {"features":2048, "weights":"Inception_V3_Weights.DEFAULT"},
+class PreTrainedBlock(nn.Module):
+    PARAMS = {"DenseNet121": 1024,
+             "DenseNet169": 1664,
+             "DenseNet201": 1920,
+             "VGG16": 512,
+             "VGG19": 512,
+             "Inception_V3": 2048,
+             "xception": 2048,
+             "inceptionv2": 1536,
 }   
-
-class _CNNBlock(nn.Module):
-    def __init__(self, model: str, data_type: str) -> None:
-        r"""Adds a processing group to process either freq or DM data
+    def __init__(self, model: str, 
+                out_features: int, 
+                unfreeze: int = 0) -> None:
+        r"""
         
-        The  data is processed in the following steps
-        1. Conv2D (with activation)
-        2. Pre-trained CNN (e.g., DenseNet121)
-        3. BatchNorm2D
-        4. Dropout
-        5. Linear
-
-        The output of the processing of this block for both freq and DM
-        data are then combined and further processed to produce a final 
-        classification
-
-        :param model: The pulsar model being built
-        :param data_type: The type of data being processed, freq or dm
+        Creates a processing block containing a pre-trained CNN like DenseNet
+        
+        :param model: The name of the pre-trained model to use
+        :param out_features: Number of output features for classifier layer
+        :param unfreeze: Number of layers to unfreeze for fine-tuning the network
+                         Default is 0
         """
         super().__init__()
-        cnn_model = MODELPARAMS[model][data_type]
-        cnn_features = MODELPARAMS[model]["features"]
-        data_features = CNNPARAMS[cnn_model]["features"]
+        weights = f"{model}_Weights.DEFAULT"
+        features = self.PARAMS[model]
 
+        # Make input data compatible with pre-trained network
         self.block1= nn.Sequential(
             nn.Conv2d(1, 3, kernel_size=2, stride=(1, 1), padding="valid", dilation=(1,1), bias=True),
             nn.ReLU(),
             )
 
-        self.cnn_block = None
-        if cnn_model != "xception":
-            self.cnn_block = torch.hub.load("pytorch/vision", cnn_model, weights=CNNPARAMS[cnn_model]["weights"])
+        # Get the pre-trained model from PyTorch
+        self.pretrained = torch.hub.load("pytorch/vision", model, weights=weights)
 
-        # Don't train any of the layers of the pre-trained models
-        self.cnn_block = nn.Sequential(*[i for i in list(self.cnn_block.children())[:-1]])
-        for ch in self.cnn_block.children():
-            for param in ch.parameters():
-                param.requires_grad = False
+        # Freeze all layers of the pre-trained model
+        for param in self.pretrained.parameters():
+            param.requires_grad = False
+
+        # Possibly unfreeze some layers
+        # https://discuss.pytorch.org/t/how-the-pytorch-freeze-network-in-some-layers-only-the-rest-of-the-training/7088/2
+        # https://stackoverflow.com/questions/69278507/unfreeze-model-layer-by-layer-in-pytorch
+        # https://python.plainenglish.io/how-to-freeze-model-weights-in-pytorch-for-transfer-learning-step-by-step-tutorial-a533a58051ef
+        # https://stackoverflow.com/questions/62523912/freeze-certain-layers-of-an-existing-model-in-pytorch
 
         # Replace the classifier layer with custom sequence
-        self.cnn_block.classifier = nn.Sequential(
-            nn.AdaptiveMaxPool2d(output_size=1),
-        )
-
-        self.block2 = nn.Sequential(
-            nn.BatchNorm2d(num_features=data_features, eps=0.001, momentum=0.99),
+        self.pretrained.classifier = nn.Sequential(
+            nn.BatchNorm2d(num_features=features, eps=0.001, momentum=0.99),
             nn.Dropout(p=0.3),
             nn.Flatten(start_dim=1),
-            nn.Linear(in_features=data_features, out_features=cnn_features),
+            nn.Linear(in_features=features, out_features=out_features),
         )
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         output = self.block1(data)
-        output = self.cnn_block(output)
-        output = self.block2(output)
-        
+        output = self.pretrained(output)
+
         return output
 
 class PulsarModel(nn.Module):
+    PARAMS = {"a": {"freq":"DenseNet121", "dm":"xception", "features":256},
+               "b": {"freq":"DenseNet121", "dm":"VGG16", "features":32},
+               "c": {"freq":"DenseNe169", "dm":"xception", "features":112},
+               "d": {"freq":"DenseNet201", "dm":"xception", "features":32},
+               "e": {"freq":"VGG19", "dm":"xception", "features":128},
+               "f": {"freq":"DenseNet169", "dm":"VGG16", "features":512},
+               "g": {"freq":"VGG19", "dm":"VGG16", "features":128},
+               "h": {"freq":"DenseNet201", "dm":"inceptionv2", "features":160},
+               "i": {"freq":"DenseNet201", "dm":"VGG16", "features":32},
+               "j": {"freq":"VGG19", "dm":"inceptionv2", "features":512},
+               "k": {"freq":"DenseNet121", "dm":"Inception_V3", "features":64},
+}
     def __init__(self, model: str) -> None:
         r"""Builds the complete pulsar model containing three components
         
@@ -105,14 +94,16 @@ class PulsarModel(nn.Module):
         """
         super().__init__()
 
-        features = MODELPARAMS[model]["features"]
+        f_model = self.PARAMS[model]['freq']
+        d_model = self.PARAMS[model]['dm']
+        features = self.PARAMS[model]["features"]
     
-        print(f"Building pulsar model: {model}", flush=True)
-        print(f"Using {MODELPARAMS[model]['freq']} for frequency data processing", flush=True)
-        print(f"Using {MODELPARAMS[model]['dm']} for DM data processing", flush=True)
+        print(f"Building full pulsar model: {model}", flush=True)
+        print(f"Using {f_model} for frequency data processing", flush=True)
+        print(f"Using {d_model} for DM data processing", flush=True)
 
-        self.freq_model = _CNNBlock(model, "freq")
-        self.dm_model = _CNNBlock(model, "dm")
+        self.freq_model = PreTrainedBlock(f_model, features)
+        self.dm_model = _CNPreTrainedBlockNBlock(d_model, features)
 
         # Final process of combined freq and DM data
         self.block = nn.Sequential(
