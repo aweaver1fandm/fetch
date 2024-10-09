@@ -198,7 +198,7 @@ def main():
         avg_vloss = validate_loop(validate_dataloader, model, loss_fn)
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
-            model_path = f"model_{args.model}_epoch{t+1}"
+            model_path = f"model_{args.model}_epoch{t+1}.pth"
             best_model_path = model_path
             torch.save(model.state_dict(), model_path)
 
