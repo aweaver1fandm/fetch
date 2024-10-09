@@ -171,9 +171,9 @@ def main():
         # Add some noise to freq data to help avoid overtraining
         print(f"Adding noise to training data", flush=True)
         for freq_data, dm_data, label in train_dataloader:
-            freq_data += torch.normal(0.0, 1.0, size=freq_data.shape)
-            freq_data += torch.randn(freq_data.size()) * 1 + 0
+            freq_data += torch.randn(freq_data.size()) * 1.0 + 0.0
 
+        # Train the model
         avg_loss = train_loop(train_dataloader, model, loss_fn, optimizer, args.batch_size)
         
         # Perform validation to see how training is going
