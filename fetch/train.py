@@ -128,6 +128,8 @@ def train_loop(dataloader: DataLoader,
         # Add some noise to freq data to help avoid overtraining
         freq_data += torch.randn(freq_data.size()) * 1.0 + 0.0
         
+        print(f"freq data shape: {freq_data.shape}", flush=True)
+        
         # Load model to GPU/CPU
         freq_data = freq_data.to(DEVICE)
         dm_data = dm_data.to(DEVICE)
