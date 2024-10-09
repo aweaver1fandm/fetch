@@ -57,6 +57,7 @@ class PreTrainedBlock(nn.Module):
 
         # Replace the classifier layer with custom sequence
         self.pretrained.classifier = nn.Sequential(
+            nn.AdaptiveMaxPool2d(output_size=1),
             nn.BatchNorm2d(num_features=features, eps=0.001, momentum=0.99),
             nn.Dropout(p=0.3),
             nn.Flatten(start_dim=1),
