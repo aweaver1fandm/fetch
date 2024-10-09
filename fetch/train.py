@@ -204,7 +204,7 @@ def main():
 
     # Load the best saved model
     model = PulsarModel(args.model)
-    model.load_state_dict(torch.load(best_model_path), weights_only=True)
+    model.load_state_dict(torch.load(best_model_path, weights_only=True))
     model.to(DEVICE)
 
     # Test the trained model
