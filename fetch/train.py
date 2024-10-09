@@ -2,6 +2,7 @@ import argparse
 import os
 import string
 import glob
+import sys
 
 import torch
 from torch import nn
@@ -11,15 +12,19 @@ from torchvision import datasets
 from torcheval.metrics.functional import binary_precision, binary_recall, binary_f1_score
 
 from fetch.pulsar_data import PulsarData
-from fetch.model import PulsarModel, MODELPARAMS
+from fetch.model import PulsarModel, PreTrainedBlock
 
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
-def train_submodel(dataloader: DataLoader,
-                   component: str):
+def train_submodel(train: DataLoader,
+                   validate: DataLoader,
+                   component: str,
+                   batch_size: int,
+                   learning_rate: float,
+                   ) -> None:
     r"""
 
     Performs training/validation for a sub-component of the PulsarModel
@@ -27,26 +32,91 @@ def train_submodel(dataloader: DataLoader,
     frequency or DM data
 
     General procedure per the paper by Devansh et al.(https://arxiv.org/pdf/1902.06343)
-
-    1. Train model with binary classification until validation loss
-       stops decreasing for at least 3 consecutive epochs
-    2. Unfreeze a layer and repeat training per step 1
-    3???
     """
 
     unfrozen_layers = 0
+    best_model_path = ""
+    best_vloss = 1000000.0
+    DATA = {"DenseNet121": "freq",
+             "DenseNet169": "freq",
+             "DenseNet201": "freq",
+             "VGG16": "dm",
+             "VGG19": "freq",
+             "Inception_V3": "dm",
+             "xception": "dm",
+             "inceptionv2": "dm",
+    }
+
+    # Setup model
+    model = PreTrainedBlock(component, out_features=2).to(DEVICE)
+
+    # Setup training parameters
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate)
+
+    for t in range(args.epochs):
+        print(f"Epoch {t+1}\n-------------------------------", flush=True)
+
+        # Train the model
+        train_loop(train, model, DATA[component], loss_fn, optimizer, batch_size)
+
+        # Validate the model and track best model perfomance
+        avg_vloss = validate_loop(validate, model, DATA[component], loss_fn)
+        if avg_vloss < best_vloss:
+            best_vloss = avg_vloss
+            model_path = f"model_{component}_epoch{t+1}.pth"
+            best_model_path = model_path
+            torch.save(model.state_dict(), model_path)
+
+def train_fullmodel(train: DataLoader,
+                   validate: DataLoader,
+                   component: str,
+                   batch_size: int,
+                   learning_rate: float,
+                   ) -> None:
+    r"""
+
+    Performs training/validation for the full PulsarModel
+
+    General procedure per the paper by Devansh et al.(https://arxiv.org/pdf/1902.06343)
+    """
+
+    best_model_path = ""
+    best_vloss = 1000000.0
+
+    # Setup model
+    model = PulsarModel(component).to(DEVICE)
+
+    # Setup training parameters
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate)
+
+    for t in range(args.epochs):
+        print(f"Epoch {t+1}\n-------------------------------", flush=True)
+
+        # Train the model
+        train_loop(train, model, "all", loss_fn, optimizer, batch_size)
+
+        # Validate the model and track best model perfomance
+        avg_vloss = validate_loop(validate, model, "all", loss_fn)
+        if avg_vloss < best_vloss:
+            best_vloss = avg_vloss
+            model_path = f"model_{component}_epoch{t+1}.pth"
+            best_model_path = model_path
+            torch.save(model.state_dict(), model_path)
 
 def train_loop(dataloader: DataLoader, 
-               model: nn.Module, 
+               model: nn.Module,
+               data: str,
                loss_fn, 
                optimizer,
                batch_size: int) -> None:
     r"""
 
-    Perform a single pass of training for the full PulsarModel
+    Perform a single pass of training for some model
     """
+
     size = len(dataloader.dataset)
-    print(f"Size of training data set: {size}", flush=True)
 
     # Set the model to training mode - important for batch normalization and dropout layers
     model.train()
@@ -62,7 +132,12 @@ def train_loop(dataloader: DataLoader,
         label = label.to(DEVICE)
 
         # Make prediction and compute loss
-        pred = model(freq_data, dm_data)
+        if data == "all":
+            pred = model(freq_data, dm_data)
+        elif data == "freq":
+            pred = model(freq_data)
+        else:
+            pred = model(dm_data)
         loss = loss_fn(pred, label)
 
         # Backpropogate
@@ -74,10 +149,13 @@ def train_loop(dataloader: DataLoader,
             loss, current = loss.item(), batch * batch_size + len(freq_data)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
     
-def validate_loop(dataloader: DataLoader, model: nn.Module, loss_fn) -> float:
+def validate_loop(dataloader: DataLoader, 
+                  model: nn.Module, 
+                  data: str,
+                  loss_fn) -> float:
     r"""
     
-    Performs a single validation pass for the full PulsarModel
+    Performs a single validation pass for some model
     """
 
     model.eval()
@@ -95,7 +173,12 @@ def validate_loop(dataloader: DataLoader, model: nn.Module, loss_fn) -> float:
             label = label.to(DEVICE)
 
             # Make prediction and compute loss
-            pred = model(freq_data, dm_data)
+            if data == "all":
+                pred = model(freq_data, dm_data)
+            elif data == "freq":
+                pred = model(freq_data)
+            else:
+                pred = model(dm_data)
             
             test_loss += loss_fn(pred, label).item()
             correct += (pred.argmax(1) == label).type(torch.float).sum().item()
@@ -187,9 +270,6 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.model not in MODELPARAMS:
-        raise ValueError(f"Model only range from a -- k.")
-
     if args.gpu_id:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
 
@@ -203,31 +283,15 @@ def main():
     train_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
     validate_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
 
-    # Build the model and load it on proper compute device
-    model = PulsarModel(args.model).to(DEVICE)
-
-    # Setup additional training parameters
-    loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=args.learning_rate)
-
-    # Train the model/validate model
-    best_model_path = ""
-    best_vloss = 1000000.0
-
-    for t in range(args.epochs):
-        print(f"Epoch {t+1}\n-------------------------------", flush=True)
-
-        # Train the model
-        train_loop(train_dataloader, model, loss_fn, optimizer, args.batch_size)
-        
-        # Track best model perfomance
-        avg_vloss = validate_loop(validate_dataloader, model, loss_fn)
-        if avg_vloss < best_vloss:
-            best_vloss = avg_vloss
-            model_path = f"model_{args.model}_epoch{t+1}.pth"
-            best_model_path = model_path
-            torch.save(model.state_dict(), model_path)
-
+    if args.model in PreTrainedBlock.PARAMS:
+        train_submodel(train_dataloader, validate_dataloader args.model, args.batch_size, args.learning_rate)
+    elif args.model in PulsarModel.PARAMS:
+        train_fullmodel(train_dataloader, validate_dataloader args.model, args.batch_size, args.learning_rate)
+    else:
+        print(f"Invalid model argument given {args.model}")
+        sys.exit(1)
+    
+    """
     # Load the best saved model
     model = PulsarModel(args.model)
     model.load_state_dict(torch.load(best_model_path, weights_only=True))
@@ -243,4 +307,4 @@ def main():
 
     # Save the model weights
     weight_file = f"/model_{args.model}_weights.pth"
-    torch.save(model.state_dict(), args.output_path + weight_file)
+    torch.save(model.state_dict(), args.output_path + weight_file)"""
