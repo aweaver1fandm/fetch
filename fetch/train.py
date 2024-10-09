@@ -52,7 +52,7 @@ def train_loop(dataloader: DataLoader,
 
         if batch % 100 == 0:
             loss, current = loss.item(), batch * batch_size + len(X)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
     
 def validate_loop(dataloader: DataLoader, model: nn.Module, loss_fn) -> float:
     
@@ -78,7 +78,7 @@ def validate_loop(dataloader: DataLoader, model: nn.Module, loss_fn) -> float:
 
     test_loss /= num_batches
     correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n", flush=True)
 
     return test_loss
 
