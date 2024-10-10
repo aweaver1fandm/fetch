@@ -30,8 +30,7 @@ def train_submodel(train: DataLoader,
     r"""
 
     Performs training/validation/testing for a sub-component of the PulsarModel
-    The sub-component here will be a pre-trained model to process either 
-    frequency or DM data
+    The sub-component will be a pre-trained model to process either frequency or DM data
 
     General procedure per the paper by Devansh et al.(https://arxiv.org/pdf/1902.06343)
     """
@@ -74,7 +73,7 @@ def train_submodel(train: DataLoader,
             torch.save(model.state_dict(), model_path)
 
     # Load the best model.  Even if not testing it we need to return it
-    model = PreTrainedBlock(component, out_features=2).to(DEVICE)
+    model = PreTrainedBlock(component, out_features=2)
     model.load_state_dict(torch.load(best_model_path, weights_only=True))
     
     # Perform testing
@@ -91,7 +90,7 @@ def train_fullmodel(train: DataLoader,
                    batch_size: int,
                    learning_rate: float,
                    epochs,
-                   ) -> None:
+                   ) -> nn.Module:
     r"""
 
     Performs training/validation for the full PulsarModel
@@ -123,6 +122,17 @@ def train_fullmodel(train: DataLoader,
             best_model_path = model_path
             torch.save(model.state_dict(), model_path)
 
+    # Load the best model.  Even if not testing it we need to return it
+    model = PulsarModel(component)
+    model.load_state_dict(torch.load(best_model_path, weights_only=True))
+    
+    # Perform testing
+    if test is not None:
+        model.to(DEVICE)
+        test_model(test, model, "all")
+
+    return model
+
 def train_loop(dataloader: DataLoader, 
                model: nn.Module,
                data: str,
@@ -131,7 +141,7 @@ def train_loop(dataloader: DataLoader,
                batch_size: int) -> None:
     r"""
 
-    Perform a single pass of training for some model
+    Perform a single pass of training for some model or model sub-component
     """
 
     size = len(dataloader.dataset)
@@ -173,7 +183,7 @@ def validate_loop(dataloader: DataLoader,
                   loss_fn) -> float:
     r"""
     
-    Performs a single validation pass for some model
+    Performs a single validation pass for some model or model sub-component
     """
 
     model.eval()
@@ -318,12 +328,14 @@ def main():
     # Get test data if provided
     tst_dataloader = None
     if args.test_data_dir is not None:
+        print(f"Loading test data.  This may take some time...")
         test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
         test_data = PulsarData(files=test_data_files)
         tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
 
     best_model = None
     # Perform training/validation and possibly testing
+    print(f"--- Beginning training ---\n")
     if m in PreTrainedBlock.PARAMS:
         best_model = train_submodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr, e)
     elif m in PulsarModel.PARAMS:
