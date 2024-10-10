@@ -48,7 +48,7 @@ class PreTrainedBlock(nn.Module):
         # Freeze all layers of the pre-trained model
         self.pretrained = nn.Sequential(*[i for i in list(self.pretrained.children())[:-1]])
         for child  in self.pretrained.children():
-            for child in child.parameters():
+            for param in child.parameters():
                 param.requires_grad = False
 
         # Possibly unfreeze some layers
