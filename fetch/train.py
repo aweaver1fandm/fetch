@@ -48,6 +48,9 @@ def train_submodel(train: DataLoader,
              "inceptionv2": "dm",
     }
 
+    print(f"Training sub-component {component}", flush=True)
+    print(f"Using {DATA[component]} data", flush=True)
+
     # Setup model
     model = PreTrainedBlock(component, out_features=2).to(DEVICE)
 
@@ -127,8 +130,6 @@ def train_loop(dataloader: DataLoader,
 
         # Add some noise to freq data to help avoid overtraining
         freq_data += torch.randn(freq_data.size()) * 1.0 + 0.0
-        
-        print(f"freq data shape: {freq_data.shape}", flush=True)
         
         # Load model to GPU/CPU
         freq_data = freq_data.to(DEVICE)
@@ -278,8 +279,9 @@ def main():
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
 
     print(f"Using {DEVICE} for computation", flush=True)
-
+    
     # Load training and split 85% to 15% into train/validate
+    print(f"Loading data.  This may take some time...", flush=True)
     train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
     train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
