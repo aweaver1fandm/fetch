@@ -229,8 +229,6 @@ def test_model(dataloader: DataLoader, model: nn.Module, data: str) -> None:
     truth = []
     predictions = []
 
-    print(f"Using data: {data}", flush=True)
-
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
@@ -248,8 +246,6 @@ def test_model(dataloader: DataLoader, model: nn.Module, data: str) -> None:
             else:
                 pred = model(dm_data)
 
-
-            pred = model(freq_data, dm_data)
             _, predicted = torch.max(pred, 1)
             predictions.extend(predicted.to('cpu').numpy())
             truth.extend(label.to('cpu').numpy())
