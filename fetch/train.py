@@ -21,14 +21,15 @@ os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 def train_submodel(train: DataLoader,
                    validate: DataLoader,
+                   test: DataLoader,
                    component: str,
                    batch_size: int,
                    learning_rate: float,
                    epochs
-                   ) -> None:
+                   ) -> nn.Module:
     r"""
 
-    Performs training/validation for a sub-component of the PulsarModel
+    Performs training/validation/testing for a sub-component of the PulsarModel
     The sub-component here will be a pre-trained model to process either 
     frequency or DM data
 
@@ -72,8 +73,20 @@ def train_submodel(train: DataLoader,
             best_model_path = model_path
             torch.save(model.state_dict(), model_path)
 
+    # Load the best model.  Even if not testing it we need to return it
+    model = PreTrainedBlock(component, out_features=2).to(DEVICE)
+    model.load_state_dict(torch.load(best_model_path, weights_only=True))
+    
+    # Perform testing
+    if test is not None:
+        model.to(DEVICE)
+        test_model(test, model, DATA[component])
+
+    return model
+    
 def train_fullmodel(train: DataLoader,
                    validate: DataLoader,
+                   test: DataLoader,
                    component: str,
                    batch_size: int,
                    learning_rate: float,
@@ -190,14 +203,14 @@ def validate_loop(dataloader: DataLoader,
 
     test_loss /= num_batches
     correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n", flush=True)
+    print(f"Validation Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n", flush=True)
 
     return test_loss
 
-def test_model(dataloader: DataLoader, model: nn.Module) -> None:
+def test_model(dataloader: DataLoader, model: nn.Module, data: str) -> None:
     r"""
 
-    Test  a fully trained PulsarModel
+    Performs testing on some fully trained model or model sub-component
     """
     # Set the model to evaluation mode - important for batch normalization and dropout layers
     model.eval()
@@ -216,6 +229,14 @@ def test_model(dataloader: DataLoader, model: nn.Module) -> None:
             label = label.to(DEVICE)
 
             # Get predictions from model and move to CPU
+            if data == "all":
+                pred = model(freq_data, dm_data)
+            elif data == "freq":
+                pred = model(freq_data)
+            else:
+                pred = model(dm_data)
+
+
             pred = model(freq_data, dm_data)
             _, predicted = torch.max(pred, 1)
             predictions.extend(predicted.to('cpu').numpy())
@@ -280,37 +301,37 @@ def main():
 
     print(f"Using {DEVICE} for computation", flush=True)
     
+    m = args.model
+    batch_size = args.batch_size
+    lr = args.learning_rate
+    e = args.epochs
+
     # Load training and split 85% to 15% into train/validate
     print(f"Loading data.  This may take some time...", flush=True)
     train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
     train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
 
-    train_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
-    validate_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
+    tr_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+    v_dataloader = DataLoader(validate_data, batch_size=batch_size, shuffle=False)
 
-    if args.model in PreTrainedBlock.PARAMS:
-        train_submodel(train_dataloader, validate_dataloader, args.model, args.batch_size, args.learning_rate, args.epochs)
-    elif args.model in PulsarModel.PARAMS:
-        train_fullmodel(train_dataloader, validate_dataloader, args.model, args.batch_size, args.learning_rate, args.epochs)
+    # Get test data if provided
+    tst_dataloader = None
+    if args.test_data_dir is not None:
+        test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
+        test_data = PulsarData(files=test_data_files)
+        tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
+
+    best_model = None
+    # Perform training/validation and possibly testing
+    if m in PreTrainedBlock.PARAMS:
+        best_model = train_submodel(tr_dataloader, v_dataloader, tst_dataloader m, batch_size, lr, e)
+    elif m in PulsarModel.PARAMS:
+        best_model = train_fullmodel(tr_dataloader, v_dataloader, tst_dataloader m, batch_size, lr, e)
     else:
         print(f"Invalid model argument given {args.model}")
         sys.exit(1)
     
-    """
-    # Load the best saved model
-    model = PulsarModel(args.model)
-    model.load_state_dict(torch.load(best_model_path, weights_only=True))
-    model.to(DEVICE)
-
-    # Test the trained model
-    if args.test_data_dir is not None:
-        test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
-        test_data = PulsarData(files=test_data_files)
-        test_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
-
-        test_model(test_dataloader, model)
-
-    # Save the model weights
-    weight_file = f"/model_{args.model}_weights.pth"
-    torch.save(model.state_dict(), args.output_path + weight_file)"""
+    # Save the final model weights
+    weight_file = f"/model_{m}_weights.pth"
+    torch.save(best_model.state_dict(), args.output_path + weight_file)
