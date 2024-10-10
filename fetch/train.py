@@ -325,9 +325,9 @@ def main():
     best_model = None
     # Perform training/validation and possibly testing
     if m in PreTrainedBlock.PARAMS:
-        best_model = train_submodel(tr_dataloader, v_dataloader, tst_dataloader m, batch_size, lr, e)
+        best_model = train_submodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr, e)
     elif m in PulsarModel.PARAMS:
-        best_model = train_fullmodel(tr_dataloader, v_dataloader, tst_dataloader m, batch_size, lr, e)
+        best_model = train_fullmodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr, e)
     else:
         print(f"Invalid model argument given {args.model}")
         sys.exit(1)
