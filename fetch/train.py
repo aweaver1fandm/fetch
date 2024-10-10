@@ -229,6 +229,8 @@ def test_model(dataloader: DataLoader, model: nn.Module, data: str) -> None:
     truth = []
     predictions = []
 
+    print(f"Using data: {data}", flush=True)
+
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
