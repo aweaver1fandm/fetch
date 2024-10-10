@@ -46,8 +46,10 @@ class PreTrainedBlock(nn.Module):
         self.pretrained = torch.hub.load("pytorch/vision", model.lower(), weights=weights)
 
         # Freeze all layers of the pre-trained model
-        for param in self.pretrained.parameters():
-            param.requires_grad = False
+        self.pretrained = nn.Sequential(*[i for i in list(self.pretrained.children())[:-1]])
+        for child  in self.pretrained.children():
+            for child in child.parameters():
+                param.requires_grad = False
 
         # Possibly unfreeze some layers
         # https://discuss.pytorch.org/t/how-the-pytorch-freeze-network-in-some-layers-only-the-rest-of-the-training/7088/2
