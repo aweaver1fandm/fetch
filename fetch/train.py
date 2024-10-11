@@ -208,7 +208,7 @@ def validate_loop(dataloader: DataLoader,
             else:
                 pred = model(dm_data)
             
-            test_loss += loss_fn(pred, label).item()
+            test_loss += loss_fn(pred, label.float()).item()
             correct += (pred.argmax(1) == label).type(torch.float).sum().item()
 
     test_loss /= num_batches
