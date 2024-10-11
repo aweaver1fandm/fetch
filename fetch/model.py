@@ -63,7 +63,8 @@ class PreTrainedBlock(nn.Module):
             nn.BatchNorm2d(num_features=features, eps=0.001, momentum=0.99),
             nn.Dropout(p=0.3),
             nn.Flatten(start_dim=1),
-            nn.Linear(in_features=features, out_features=out_features),
+            nn.Sigmoid()
+            #nn.Linear(in_features=features, out_features=out_features),
         )
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
