@@ -166,7 +166,7 @@ def train_loop(dataloader: DataLoader,
             pred = model(freq_data)
         else:
             pred = model(dm_data)
-        loss = loss_fn(pred, label)
+        loss = loss_fn(pred, label.float())
 
         # Backpropogate
         loss.backward()
