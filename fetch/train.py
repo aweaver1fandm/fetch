@@ -52,7 +52,7 @@ def train_submodel(train: DataLoader,
     print(f"Using {DATA[component]} data", flush=True)
 
     # Setup model
-    model = PreTrainedBlock(component, out_features=2).to(DEVICE)
+    model = PreTrainedBlock(component, out_features=1).to(DEVICE)
 
     # Setup training parameters
     loss_fn = nn.BCEWithLogitsLoss()
