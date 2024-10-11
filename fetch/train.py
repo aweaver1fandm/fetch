@@ -55,7 +55,7 @@ def train_submodel(train: DataLoader,
     model = PreTrainedBlock(component, out_features=2).to(DEVICE)
 
     # Setup training parameters
-    loss_fn = nn.BCELoss()
+    loss_fn = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate)
 
     for t in range(epochs):
@@ -105,7 +105,7 @@ def train_fullmodel(train: DataLoader,
     model = PulsarModel(component).to(DEVICE)
 
     # Setup training parameters
-    loss_fn = nn.BCELoss()
+    loss_fn = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate)
 
     for t in range(epochs):
