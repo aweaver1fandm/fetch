@@ -64,8 +64,8 @@ class PreTrainedBlock(nn.Module):
             nn.Dropout(p=0.3),
             #nn.Flatten(start_dim=1),
             nn.Linear(in_features=features, out_features=out_features),
-            nn.Sigmoid()
-            nn.Flatten()
+            nn.Sigmoid(),
+            #nn.Flatten(),
         )
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
