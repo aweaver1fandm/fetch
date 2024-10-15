@@ -74,7 +74,7 @@ def train_submodel(train: DataLoader,
             torch.save(model.state_dict(), model_path)
 
     # Load the best model.  Even if not testing it we need to return it
-    model = PreTrainedBlock(component, out_features=2)
+    model = PreTrainedBlock(component, out_features=1)
     model.load_state_dict(torch.load(best_model_path, weights_only=True))
     
     # Perform testing
