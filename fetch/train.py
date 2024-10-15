@@ -25,8 +25,9 @@ def train_submodel(train: DataLoader,
                    component: str,
                    batch_size: int,
                    learning_rate: float,
-                   epochs
-                   ) -> nn.Module:
+                   epochs: int,
+                   prob: float,
+    ) -> nn.Module:
     r"""
 
     Performs training/validation/testing for a sub-component of the PulsarModel
@@ -65,7 +66,7 @@ def train_submodel(train: DataLoader,
         train_loop(train, model, DATA[component], loss_fn, optimizer, batch_size)
 
         # Validate the model and track best model perfomance
-        avg_vloss = validate_loop(validate, model, DATA[component], loss_fn)
+        avg_vloss = validate_loop(validate, model, DATA[component], loss_fn, prob)
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
             model_path = f"model_{component}_epoch{t+1}.pth"
@@ -79,7 +80,7 @@ def train_submodel(train: DataLoader,
     # Perform testing
     if test is not None:
         model.to(DEVICE)
-        test_model(test, model, DATA[component])
+        test_model(test, model, DATA[component], prob)
 
     return model
     
@@ -90,7 +91,7 @@ def train_fullmodel(train: DataLoader,
                    batch_size: int,
                    learning_rate: float,
                    epochs,
-                   ) -> nn.Module:
+    ) -> nn.Module:
     r"""
 
     Performs training/validation for the full PulsarModel
@@ -138,7 +139,8 @@ def train_loop(dataloader: DataLoader,
                data: str,
                loss_fn, 
                optimizer,
-               batch_size: int) -> None:
+               batch_size: int
+    ) -> None:
     r"""
 
     Perform a single pass of training for some model or model sub-component
@@ -180,7 +182,9 @@ def train_loop(dataloader: DataLoader,
 def validate_loop(dataloader: DataLoader, 
                   model: nn.Module, 
                   data: str,
-                  loss_fn) -> float:
+                  loss_fn,
+                  prob: float
+    ) -> float:
     r"""
     
     Performs a single validation pass for some model or model sub-component
@@ -209,7 +213,7 @@ def validate_loop(dataloader: DataLoader,
                 pred = model(dm_data)
             
             test_loss += loss_fn(pred, label.float()).item()
-            correct += (pred.argmax(1) == label).type(torch.float).sum().item()
+            correct += (np.round(pred >= prob) == label).type(torch.float).sum().item()
 
     test_loss /= num_batches
     correct /= size
@@ -217,7 +221,7 @@ def validate_loop(dataloader: DataLoader,
 
     return test_loss
 
-def test_model(dataloader: DataLoader, model: nn.Module, data: str) -> None:
+def test_model(dataloader: DataLoader, model: nn.Module, data: str, prob: float) -> None:
     r"""
 
     Performs testing on some fully trained model or model sub-component
@@ -249,6 +253,8 @@ def test_model(dataloader: DataLoader, model: nn.Module, data: str) -> None:
             _, predicted = torch.max(pred, 1)
             predictions.extend(predicted.to('cpu').numpy())
             truth.extend(label.to('cpu').numpy())
+
+    predictions = np.round(predictions >= prob)
             
     pred_tensor = torch.tensor(predictions)
     truth_tensor = torch.tensor(truth)
@@ -302,6 +308,10 @@ def main():
     parser.add_argument(
         "-lr", "--learning_rate", help="Training learning rate", default=1e-3, type=float
     )
+    parser.add_argument(
+        "-p", "--probability", help="Detection threshold", default=0.5, type=float
+    )
+
     args = parser.parse_args()
 
     if args.gpu_id:
@@ -313,9 +323,10 @@ def main():
     batch_size = args.batch_size
     lr = args.learning_rate
     e = args.epochs
+    p = args.probability
 
     # Load training and split 85% to 15% into train/validate
-    print(f"Loading data.  This may take some time...", flush=True)
+    print(f"Loading training data.  This may take some time...", flush=True)
     train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
     train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
@@ -335,7 +346,7 @@ def main():
     # Perform training/validation and possibly testing
     print(f"--- Beginning training ---\n")
     if m in PreTrainedBlock.PARAMS:
-        best_model = train_submodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr, e)
+        best_model = train_submodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr, e, p)
     elif m in PulsarModel.PARAMS:
         best_model = train_fullmodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr, e)
     else:
