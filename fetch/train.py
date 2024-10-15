@@ -4,8 +4,6 @@ import string
 import glob
 import sys
 
-import numpy as np
-
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, random_split
@@ -214,8 +212,10 @@ def validate_loop(dataloader: DataLoader,
             else:
                 pred = model(dm_data)
             
+            # Convert to either 0 or 1 based on prediction probability
+            pred = (pred >= prob).float()
             test_loss += loss_fn(pred, label.float()).item()
-            correct += (np.round(pred >= prob) == label).type(torch.float).sum().item()
+            correct += (pred  == label).type(torch.float).sum().item()
 
     test_loss /= num_batches
     correct /= size
@@ -253,10 +253,9 @@ def test_model(dataloader: DataLoader, model: nn.Module, data: str, prob: float)
                 pred = model(dm_data)
 
             _, predicted = torch.max(pred, 1)
+            predicted = (predicted >= prob).float()
             predictions.extend(predicted.to('cpu').numpy())
             truth.extend(label.to('cpu').numpy())
-
-    predictions = np.round(predictions >= prob)
             
     pred_tensor = torch.tensor(predictions)
     truth_tensor = torch.tensor(truth)
