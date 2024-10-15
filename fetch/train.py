@@ -252,8 +252,8 @@ def test_model(dataloader: DataLoader, model: nn.Module, data: str, prob: float)
             else:
                 pred = model(dm_data)
 
-            _, predicted = torch.max(pred, 1)
-            predicted = (predicted >= prob).float()
+            #_, predicted = torch.max(pred, 1)
+            predicted = (pred >= prob).float()
             predictions.extend(predicted.to('cpu').numpy())
             truth.extend(label.to('cpu').numpy())
             
