@@ -142,7 +142,6 @@ def train_loop(dataloader: DataLoader,
                loss_fn, 
                optimizer,
                batch_size: int,
-               epoch: int,
     ) -> None:
     r"""
 
@@ -187,7 +186,6 @@ def validate_loop(dataloader: DataLoader,
                   data: str,
                   loss_fn,
                   prob: float,
-                  epoch: int,
     ) -> float:
     r"""
     
@@ -216,13 +214,6 @@ def validate_loop(dataloader: DataLoader,
             else:
                 pred = model(dm_data)
             
-            labels = label.to('cpu').numpy()
-            predictions = pred.to('cpu').numpy()
-            df = pd.DataFrame({'predicted': predictions, 'truth': labels})
-            filename = f"validate_epoch{epoch}.csv"
-            with open(filename, 'a', newline='') as f:
-                df.to_csv(f, mode='a', header=not f.tell())
-
             # Convert to either 0 or 1 based on prediction probability
             pred = (pred >= prob).float()
             test_loss += loss_fn(pred, label.float()).item()
@@ -262,11 +253,6 @@ def test_model(dataloader: DataLoader, model: nn.Module, data: str, prob: float)
                 pred = model(freq_data)
             else:
                 pred = model(dm_data)
-
-            df = pd.DataFrame({'predicted': pred, 'truth': label})
-            filename = f"testing.csv"
-            with open(filename, 'a', newline='') as f:
-                df.to_csv(f, mode='a', header=not f.tell())
 
             #_, predicted = torch.max(pred, 1)
             predicted = (pred >= prob).float()
@@ -363,9 +349,9 @@ def main():
     # Perform training/validation and possibly testing
     print(f"--- Beginning training ---\n")
     if m in PreTrainedBlock.PARAMS:
-        best_model = train_submodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr, e, p)
+        best_model = train_submodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr, p)
     elif m in PulsarModel.PARAMS:
-        best_model = train_fullmodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr, e)
+        best_model = train_fullmodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr)
     else:
         print(f"Invalid model argument given {args.model}")
         sys.exit(1)
