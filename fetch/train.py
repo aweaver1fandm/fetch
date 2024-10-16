@@ -68,7 +68,7 @@ def train_submodel(train: DataLoader,
         train_loop(train, model, DATA[component], loss_fn, optimizer, batch_size)
 
         # Validate the model and track best model perfomance
-        avg_vloss = validate_loop(validate, model, DATA[component], loss_fn, prob, t+1)
+        avg_vloss = validate_loop(validate, model, DATA[component], loss_fn, prob)
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
             model_path = f"model_{component}_epoch{t+1}.pth"
@@ -119,7 +119,7 @@ def train_fullmodel(train: DataLoader,
         train_loop(train, model, "all", loss_fn, optimizer, batch_size)
 
         # Validate the model and track best model perfomance
-        avg_vloss = validate_loop(validate, model, "all", loss_fn)
+        avg_vloss = validate_loop(validate, model, "all", loss_fn, prob)
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
             model_path = f"model_{component}_epoch{t+1}.pth"
@@ -133,7 +133,7 @@ def train_fullmodel(train: DataLoader,
     # Perform testing
     if test is not None:
         model.to(DEVICE)
-        test_model(test, model, "all")
+        test_model(test, model, "all", prob)
 
     return model
 
