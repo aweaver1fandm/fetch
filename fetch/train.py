@@ -173,17 +173,17 @@ def train_loop(dataloader: DataLoader,
             pred = model(dm_data)
         loss = loss_fn(pred, label.float())
 
-        labels = label.to('cpu').numpy()
-        predictions = pred.to('cpu').numpy()
-        df = pd.DataFrame({'predicted': predictions, 'truth': label})
-        filename = f"training_epoch{epoch}.csv"
-        with open(filename, 'a', newline='') as f:
-            df.to_csv(f, mode='a', header=not f.tell())
-
         # Backpropogate
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
+
+        labels = label.to('cpu').numpy()
+        predictions = pred.detach().numpy()
+        df = pd.DataFrame({'predicted': predictions, 'truth': label})
+        filename = f"training_epoch{epoch}.csv"
+        with open(filename, 'a', newline='') as f:
+            df.to_csv(f, mode='a', header=not f.tell())
 
         if batch % 100 == 0:
             loss, current = loss.item(), batch * batch_size + len(freq_data)
