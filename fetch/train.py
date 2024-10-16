@@ -173,7 +173,7 @@ def train_loop(dataloader: DataLoader,
             pred = model(dm_data)
         loss = loss_fn(pred, label.float())
 
-        df = pd.Dataframe({'predicted': pred, 'truth': label})
+        df = pd.DataFrame({'predicted': pred, 'truth': label})
         filename = f"training_epoch{epoch}.csv"
         with open(filename, 'a', newline='') as f:
             df.to_csv(f, mode='a', header=not f.tell())
@@ -221,7 +221,7 @@ def validate_loop(dataloader: DataLoader,
             else:
                 pred = model(dm_data)
             
-            df = pd.Dataframe({'predicted': pred, 'truth': label})
+            df = pd.DataFrame({'predicted': pred, 'truth': label})
             filename = f"validate_epoch{epoch}.csv"
             with open(filename, 'a', newline='') as f:
                 df.to_csv(f, mode='a', header=not f.tell())
@@ -266,7 +266,7 @@ def test_model(dataloader: DataLoader, model: nn.Module, data: str, prob: float)
             else:
                 pred = model(dm_data)
 
-            df = pd.Dataframe({'predicted': pred, 'truth': label})
+            df = pd.DataFrame({'predicted': pred, 'truth': label})
             filename = f"testing.csv"
             with open(filename, 'a', newline='') as f:
                 df.to_csv(f, mode='a', header=not f.tell())
