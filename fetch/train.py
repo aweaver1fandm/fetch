@@ -65,7 +65,7 @@ def train_submodel(train: DataLoader,
         print(f"Epoch {t+1}\n-------------------------------", flush=True)
 
         # Train the model
-        train_loop(train, model, DATA[component], loss_fn, optimizer, batch_size, t+1)
+        train_loop(train, model, DATA[component], loss_fn, optimizer, batch_size)
 
         # Validate the model and track best model perfomance
         avg_vloss = validate_loop(validate, model, DATA[component], loss_fn, prob, t+1)
@@ -92,7 +92,8 @@ def train_fullmodel(train: DataLoader,
                    component: str,
                    batch_size: int,
                    learning_rate: float,
-                   epochs,
+                   epochs: int,
+                   prob: float,
     ) -> nn.Module:
     r"""
 
@@ -349,9 +350,9 @@ def main():
     # Perform training/validation and possibly testing
     print(f"--- Beginning training ---\n")
     if m in PreTrainedBlock.PARAMS:
-        best_model = train_submodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr, p)
+        best_model = train_submodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr, e, p)
     elif m in PulsarModel.PARAMS:
-        best_model = train_fullmodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr)
+        best_model = train_fullmodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr, e, p)
     else:
         print(f"Invalid model argument given {args.model}")
         sys.exit(1)
