@@ -157,7 +157,7 @@ def train_loop(dataloader: DataLoader,
     for batch, (freq_data, dm_data, label) in enumerate(dataloader):
 
         # Add some noise to freq data to help avoid overtraining
-        freq_data += torch.randn(freq_data.size()) * 1.0 + 0.0
+        #freq_data += torch.randn(freq_data.size()) * 1.0 + 0.0
         
         # Load model to GPU/CPU
         freq_data = freq_data.to(DEVICE)

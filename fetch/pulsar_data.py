@@ -132,7 +132,7 @@ class PulsarData(Dataset):
 
         # Make sure the data dimensions are good
         if data_dims != self.ft_dim:
-            print(f"ERROR: Data shape {data_dim} does not match expected dimensions {self.ft_dim}", flush=True)
+            print(f"ERROR: Data shape {data_dims} does not match expected dimensions {self.ft_dim}", flush=True)
             sys.exit(1)
 
         self.ft_data = np.append(self.ft_data, freq_data, axis=0)
