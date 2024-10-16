@@ -14,6 +14,8 @@ from torcheval.metrics.functional import binary_precision, binary_recall, binary
 from fetch.pulsar_data import PulsarData
 from fetch.model import PulsarModel, PreTrainedBlock
 
+import pandas as pd
+
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -63,10 +65,10 @@ def train_submodel(train: DataLoader,
         print(f"Epoch {t+1}\n-------------------------------", flush=True)
 
         # Train the model
-        train_loop(train, model, DATA[component], loss_fn, optimizer, batch_size)
+        train_loop(train, model, DATA[component], loss_fn, optimizer, batch_size, t+1)
 
         # Validate the model and track best model perfomance
-        avg_vloss = validate_loop(validate, model, DATA[component], loss_fn, prob)
+        avg_vloss = validate_loop(validate, model, DATA[component], loss_fn, prob, t+1)
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
             model_path = f"model_{component}_epoch{t+1}.pth"
@@ -139,7 +141,8 @@ def train_loop(dataloader: DataLoader,
                data: str,
                loss_fn, 
                optimizer,
-               batch_size: int
+               batch_size: int,
+               epoch: int,
     ) -> None:
     r"""
 
@@ -170,6 +173,11 @@ def train_loop(dataloader: DataLoader,
             pred = model(dm_data)
         loss = loss_fn(pred, label.float())
 
+        df = pd.Dataframe({'predicted': pred, 'truth': label})
+        filename = f"training_epoch{epoch}.csv"
+        with open(filename, 'a', newline='') as f:
+            df.to_csv(f, mode='a', header=not f.tell())
+
         # Backpropogate
         loss.backward()
         optimizer.step()
@@ -183,7 +191,8 @@ def validate_loop(dataloader: DataLoader,
                   model: nn.Module, 
                   data: str,
                   loss_fn,
-                  prob: float
+                  prob: float,
+                  epoch: int,
     ) -> float:
     r"""
     
@@ -212,6 +221,11 @@ def validate_loop(dataloader: DataLoader,
             else:
                 pred = model(dm_data)
             
+            df = pd.Dataframe({'predicted': pred, 'truth': label})
+            filename = f"validate_epoch{epoch}.csv"
+            with open(filename, 'a', newline='') as f:
+                df.to_csv(f, mode='a', header=not f.tell())
+
             # Convert to either 0 or 1 based on prediction probability
             pred = (pred >= prob).float()
             test_loss += loss_fn(pred, label.float()).item()
@@ -251,6 +265,11 @@ def test_model(dataloader: DataLoader, model: nn.Module, data: str, prob: float)
                 pred = model(freq_data)
             else:
                 pred = model(dm_data)
+
+            df = pd.Dataframe({'predicted': pred, 'truth': label})
+            filename = f"testing.csv"
+            with open(filename, 'a', newline='') as f:
+                df.to_csv(f, mode='a', header=not f.tell())
 
             #_, predicted = torch.max(pred, 1)
             predicted = (pred >= prob).float()
