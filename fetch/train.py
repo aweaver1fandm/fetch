@@ -178,14 +178,6 @@ def train_loop(dataloader: DataLoader,
         optimizer.step()
         optimizer.zero_grad()
 
-        labels = label.to('cpu').numpy()
-        pred.detach()
-        predictions = pred.to('cpu').numpy()
-        df = pd.DataFrame({'predicted': predictions, 'truth': label})
-        filename = f"training_epoch{epoch}.csv"
-        with open(filename, 'a', newline='') as f:
-            df.to_csv(f, mode='a', header=not f.tell())
-
         if batch % 100 == 0:
             loss, current = loss.item(), batch * batch_size + len(freq_data)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
