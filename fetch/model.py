@@ -107,7 +107,7 @@ class PulsarModel(nn.Module):
         print(f"Using {d_model} for DM data processing", flush=True)
 
         self.freq_model = PreTrainedBlock(f_model, features)
-        self.dm_model = _CNPreTrainedBlockNBlock(d_model, features)
+        self.dm_model = PreTrainedBlock(d_model, features)
 
         # Final process of combined freq and DM data
         self.block = nn.Sequential(
