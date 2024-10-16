@@ -179,7 +179,8 @@ def train_loop(dataloader: DataLoader,
         optimizer.zero_grad()
 
         labels = label.to('cpu').numpy()
-        predictions = pred.detach().to('cpu').numpy()
+        pred.detach()
+        predictions = pred.to('cpu').numpy()
         df = pd.DataFrame({'predicted': predictions, 'truth': label})
         filename = f"training_epoch{epoch}.csv"
         with open(filename, 'a', newline='') as f:
