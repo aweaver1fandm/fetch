@@ -19,7 +19,7 @@ class PreTrainedBlock(nn.Module):
              "Inception_V3": 2048,
              "xception": 2048,
              "inceptionv2": 1536,
-}   
+    }   
     def __init__(self, model: str, 
                 out_features: int, 
                 unfreeze: int = 0) -> None:
@@ -28,7 +28,9 @@ class PreTrainedBlock(nn.Module):
         Creates a processing block containing a pre-trained CNN like DenseNet
         
         :param model: The name of the pre-trained model to use
-        :param out_features: Number of output features for classifier layer
+        :param out_features: Number of output features for classifier 
+                             This is the k training hyperparamter
+                             referred to in the original FETCH paper
         :param unfreeze: Number of layers to unfreeze for fine-tuning the network
                          Default is 0
         """
@@ -45,11 +47,45 @@ class PreTrainedBlock(nn.Module):
         # Get the pre-trained model from PyTorch
         self.pretrained = torch.hub.load("pytorch/vision", model.lower(), weights=weights)
 
-        # Freeze all layers of the pre-trained model
-        self.pretrained = nn.Sequential(*[i for i in list(self.pretrained.children())[:-1]])
-        for child  in self.pretrained.children():
-            for param in child.parameters():
-                param.requires_grad = False
+        ''' Suggested by AI
+        # Freeze all layers in the model
+        for param in vgg16.parameters():
+            param.requires_grad = False
+
+        # Unfreeze specific layers (e.g., the last convolutional block)
+        for param in vgg16.features[24:].parameters():
+            param.requires_grad = True
+
+        def freeze_densenet_block(model, block_idx):
+        """
+            Freezes a specific block in DenseNet121.
+
+            Args:
+                model (torchvision.models.DenseNet): The DenseNet121 model.
+                block_idx (int): The index of the block to freeze (0-3).
+        """
+
+        # Get the desired block
+        block = model.features.denseblock[block_idx]
+
+        # Freeze all parameters within the block
+        for param in block.parameters():
+            param.requires_grad = False'''
+
+        # Original setup
+        # Freeze all layers of the pre-trained model at least initially
+        #self.pretrained = nn.Sequential(*[i for i in list(self.pretrained.children())[:-1]])
+        #for child  in self.pretrained.children():
+        #    for param in child.parameters():
+        #        param.requires_grad = False
+        # or could do 
+        #for layer in model.children():
+        #    for parameter in layer.parameters():
+        #        parameter.requires_grad = True
+
+        for param in model.parameters():
+            print(f"Parameter: {param}")
+            param.requires_grad = False
 
         # Possibly unfreeze some layers
         # https://discuss.pytorch.org/t/how-the-pytorch-freeze-network-in-some-layers-only-the-rest-of-the-training/7088/2
@@ -64,7 +100,7 @@ class PreTrainedBlock(nn.Module):
             nn.Dropout(p=0.3),
             nn.Flatten(start_dim=1),
             nn.Linear(in_features=features, out_features=out_features),
-            #nn.Sigmoid(),
+            nn.Softmax(dim=1),
         )
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
@@ -85,40 +121,7 @@ class PulsarModel(nn.Module):
               "i": {"freq":"DenseNet201", "dm":"VGG16", "k":32},
               "j": {"freq":"VGG19", "dm":"inceptionv2", "k":512},
               "k": {"freq":"DenseNet121", "dm":"Inception_V3", "k":64},
-}
-    def __init__(self, model: str) -> None:
-        r"""
-        
-        Builds a combined untrained pulsar model containing three components
-        
-        1. Sub-model to process freq data
-        2. Sub-model to process DM data
-        3. Combine results from two sub-models and further
-           process to produce final classification
-
-        :param model: The pulsar model being built (a-k)
-        """
-        super().__init__()
-
-        f_model = self.PARAMS[model]['freq']
-        d_model = self.PARAMS[model]['dm']
-        k = self.PARAMS[model]['k']
-    
-        print(f"Building full pulsar model: {model}", flush=True)
-        print(f"Using {f_model} for frequency data processing", flush=True)
-        print(f"Using {d_model} for DM data processing", flush=True)
-
-        self.freq_model = PreTrainedBlock(f_model, out_features=k)
-        self.dm_model = PreTrainedBlock(d_model, out_features=k)
-
-        # Final process of combined freq and DM data
-        self.block = nn.Sequential(
-            nn.BatchNorm1d(num_features=features, eps=0.001, momentum=0.99),
-            nn.ReLU(),
-            nn.Linear(in_features=features, out_features=features),
-            nn.Sigmoid(),
-        )
-
+    }
     def __init__(self, freq_module: nn.Module, dm_module: nn.Module, features: int) -> None:
         r"""
         
