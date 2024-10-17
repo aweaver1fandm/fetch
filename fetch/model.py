@@ -64,7 +64,7 @@ class PreTrainedBlock(nn.Module):
             nn.Dropout(p=0.3),
             nn.Flatten(start_dim=1),
             nn.Linear(in_features=features, out_features=out_features),
-            nn.Sigmoid(),
+            #nn.Sigmoid(),
         )
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
@@ -74,17 +74,17 @@ class PreTrainedBlock(nn.Module):
         return output.squeeze()
 
 class PulsarModel(nn.Module):
-    PARAMS = {"a": {"freq":"DenseNet121", "dm":"xception", "features":256},
-              "b": {"freq":"DenseNet121", "dm":"VGG16", "features":32},
-              "c": {"freq":"DenseNe169", "dm":"xception", "features":112},
-              "d": {"freq":"DenseNet201", "dm":"xception", "features":32},
-              "e": {"freq":"VGG19", "dm":"xception", "features":128},
-              "f": {"freq":"DenseNet169", "dm":"VGG16", "features":512},
-              "g": {"freq":"VGG19", "dm":"VGG16", "features":128},
-              "h": {"freq":"DenseNet201", "dm":"inceptionv2", "features":160},
-              "i": {"freq":"DenseNet201", "dm":"VGG16", "features":32},
-              "j": {"freq":"VGG19", "dm":"inceptionv2", "features":512},
-              "k": {"freq":"DenseNet121", "dm":"Inception_V3", "features":64},
+    PARAMS = {"a": {"freq":"DenseNet121", "dm":"xception", "k":256},
+              "b": {"freq":"DenseNet121", "dm":"VGG16", "k":32},
+              "c": {"freq":"DenseNe169", "dm":"xception", "k":112},
+              "d": {"freq":"DenseNet201", "dm":"xception", "k":32},
+              "e": {"freq":"VGG19", "dm":"xception", "k":128},
+              "f": {"freq":"DenseNet169", "dm":"VGG16", "k":512},
+              "g": {"freq":"VGG19", "dm":"VGG16", "k":128},
+              "h": {"freq":"DenseNet201", "dm":"inceptionv2", "k":160},
+              "i": {"freq":"DenseNet201", "dm":"VGG16", "k":32},
+              "j": {"freq":"VGG19", "dm":"inceptionv2", "k":512},
+              "k": {"freq":"DenseNet121", "dm":"Inception_V3", "k":64},
 }
     def __init__(self, model: str) -> None:
         r"""
@@ -102,14 +102,14 @@ class PulsarModel(nn.Module):
 
         f_model = self.PARAMS[model]['freq']
         d_model = self.PARAMS[model]['dm']
-        features = self.PARAMS[model]["features"]
+        k = self.PARAMS[model]['k']
     
         print(f"Building full pulsar model: {model}", flush=True)
         print(f"Using {f_model} for frequency data processing", flush=True)
         print(f"Using {d_model} for DM data processing", flush=True)
 
-        self.freq_model = PreTrainedBlock(f_model, out_features=1)
-        self.dm_model = PreTrainedBlock(d_model, out_features=1)
+        self.freq_model = PreTrainedBlock(f_model, out_features=k)
+        self.dm_model = PreTrainedBlock(d_model, out_features=k)
 
         # Final process of combined freq and DM data
         self.block = nn.Sequential(
@@ -137,7 +137,7 @@ class PulsarModel(nn.Module):
 
         # Final process of combined freq and DM data
         self.block = nn.Sequential(
-            #nn.BatchNorm1d(num_features=features, eps=0.001, momentum=0.99),
+            nn.BatchNorm1d(num_features=features, eps=0.001, momentum=0.99),
             nn.ReLU(),
             nn.Linear(in_features=features, out_features=features),
             nn.Sigmoid(),
@@ -147,12 +147,8 @@ class PulsarModel(nn.Module):
         freq_output = self.freq_model(freq_input)
         dm_output = self.dm_model(dm_input)
 
-        print(f"Freq output shape: {freq_output.shape}", flush=True)
-        print(f"DM output shape: {dm_output.shape}", flush=True)
-
         # Combine the outputs and produce final classification
         output = torch.mul(freq_output, dm_output)
-        print(f"multiplied output shape: {output.shape}", flush=True)
         output = self.block(output)
 
         return output

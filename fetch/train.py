@@ -106,12 +106,13 @@ def train_fullmodel(train: DataLoader,
     best_vloss = 1000000.0
 
     # Get the pre-trained components and build full model
+    k = PulsarModel.PARAMS[model_index]['k']
     freq_component = PulsarModel.PARAMS[model_index]['freq']
-    freq_model = PreTrainedBlock(freq_component, out_features=1)
+    freq_model = PreTrainedBlock(freq_component, out_features=k)
     freq_model.load_state_dict(torch.load(f"model_weights/model_{freq_component}_weights.pth", weights_only=True))
 
     dm_component = PulsarModel.PARAMS[model_index]['dm']
-    dm_model = PreTrainedBlock(dm_component, out_features=1)
+    dm_model = PreTrainedBlock(dm_component, out_features=k)
     dm_model.load_state_dict(torch.load(f"model_weights/model_{dm_component}_weights.pth", weights_only=True))
     
     features = PulsarModel.PARAMS[model_index]['features']
