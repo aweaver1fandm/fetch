@@ -89,7 +89,7 @@ def train_submodel(train: DataLoader,
 def train_fullmodel(train: DataLoader,
                    validate: DataLoader,
                    test: DataLoader,
-                   component: str,
+                   model_index: str,
                    batch_size: int,
                    learning_rate: float,
                    epochs: int,
@@ -105,8 +105,16 @@ def train_fullmodel(train: DataLoader,
     best_model_path = ""
     best_vloss = 1000000.0
 
-    # Setup model
-    model = PulsarModel(component).to(DEVICE)
+    # Get the pre-trained components and build full model
+    freq_component = PulsarModel.PARAMS[model_index]['freq']
+    freq_model = PreTrainedBlock(freq_component, out_features=1)
+    freq_model.load_state_dict(torch.load(f"model_weights/model_{freq_component}_weights.pth", weights_only=True))
+
+    dm_component = PulsarModel.PARAMS[model_index]['dm']
+    dm_model = PreTrainedBlock(dm_component, out_features=1)
+    dm_model.load_state_dict(torch.load(f"model_weights/model_{dm_component}_weights.pth", weights_only=True))
+    
+    model = PulsarModel(freq_component, dm_component).to(DEVICE)
 
     # Setup training parameters
     loss_fn = nn.BCEWithLogitsLoss()

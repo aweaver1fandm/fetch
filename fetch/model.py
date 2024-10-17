@@ -75,19 +75,21 @@ class PreTrainedBlock(nn.Module):
 
 class PulsarModel(nn.Module):
     PARAMS = {"a": {"freq":"DenseNet121", "dm":"xception", "features":256},
-               "b": {"freq":"DenseNet121", "dm":"VGG16", "features":32},
-               "c": {"freq":"DenseNe169", "dm":"xception", "features":112},
-               "d": {"freq":"DenseNet201", "dm":"xception", "features":32},
-               "e": {"freq":"VGG19", "dm":"xception", "features":128},
-               "f": {"freq":"DenseNet169", "dm":"VGG16", "features":512},
-               "g": {"freq":"VGG19", "dm":"VGG16", "features":128},
-               "h": {"freq":"DenseNet201", "dm":"inceptionv2", "features":160},
-               "i": {"freq":"DenseNet201", "dm":"VGG16", "features":32},
-               "j": {"freq":"VGG19", "dm":"inceptionv2", "features":512},
-               "k": {"freq":"DenseNet121", "dm":"Inception_V3", "features":64},
+              "b": {"freq":"DenseNet121", "dm":"VGG16", "features":32},
+              "c": {"freq":"DenseNe169", "dm":"xception", "features":112},
+              "d": {"freq":"DenseNet201", "dm":"xception", "features":32},
+              "e": {"freq":"VGG19", "dm":"xception", "features":128},
+              "f": {"freq":"DenseNet169", "dm":"VGG16", "features":512},
+              "g": {"freq":"VGG19", "dm":"VGG16", "features":128},
+              "h": {"freq":"DenseNet201", "dm":"inceptionv2", "features":160},
+              "i": {"freq":"DenseNet201", "dm":"VGG16", "features":32},
+              "j": {"freq":"VGG19", "dm":"inceptionv2", "features":512},
+              "k": {"freq":"DenseNet121", "dm":"Inception_V3", "features":64},
 }
     def __init__(self, model: str) -> None:
-        r"""Builds the complete pulsar model containing three components
+        r"""
+        
+        Builds a combined untrained pulsar model containing three components
         
         1. Sub-model to process freq data
         2. Sub-model to process DM data
@@ -111,10 +113,34 @@ class PulsarModel(nn.Module):
 
         # Final process of combined freq and DM data
         self.block = nn.Sequential(
-            nn.BatchNorm1d(num_features=features, eps=0.001, momentum=0.99),
+            nn.BatchNorm2d(num_features=features, eps=0.001, momentum=0.99),
             nn.ReLU(),
             nn.Linear(in_features=features, out_features=features),
-            nn.Softmax(dim=1)
+            nn.Sigmoid(),
+        )
+
+    def __init__(self, freq_module: nn.Module, dm_module: nn.Module, features: int) -> None:
+        r"""
+        
+        Builds a combined pulsar model using pre-trained freq and dm modules
+
+        :param freq_module: A pre-trained nn.Module for frequency processing
+        :param dm_module: A pre-trained nn.Module for dm processing
+        :param features: Number of features for combined processing
+        """
+        super().__init__()
+    
+        print(f"Building pulsar model using pre-trained modules", flush=True)
+
+        self.freq_model = freq_module
+        self.dm_model = dm_module
+
+        # Final process of combined freq and DM data
+        self.block = nn.Sequential(
+            nn.BatchNorm2d(num_features=features, eps=0.001, momentum=0.99),
+            nn.ReLU(),
+            nn.Linear(in_features=features, out_features=features),
+            nn.Sigmoid(),
         )
 
     def forward(self, freq_input: torch.Tensor, dm_input: torch.Tensor) -> torch.Tensor:
