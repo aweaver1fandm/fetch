@@ -147,12 +147,12 @@ class PulsarModel(nn.Module):
         freq_output = self.freq_model(freq_input)
         dm_output = self.dm_model(dm_input)
 
-        print(f"Freq output shape: {freq_output.shape()}", flush=True)
-        print(f"DM output shape: {dm_output.shape()}", flush=True)
+        print(f"Freq output shape: {freq_output.shape}", flush=True)
+        print(f"DM output shape: {dm_output.shape}", flush=True)
 
         # Combine the outputs and produce final classification
         output = torch.mul(freq_output, dm_output)
-        print(f"multiplied output shape: {output.shape()}", flush=True)
+        print(f"multiplied output shape: {output.shape}", flush=True)
         output = self.block(output)
 
         return output
