@@ -113,7 +113,7 @@ class PulsarModel(nn.Module):
 
         # Final process of combined freq and DM data
         self.block = nn.Sequential(
-            nn.BatchNorm2d(num_features=features, eps=0.001, momentum=0.99),
+            nn.BatchNorm1d(num_features=features, eps=0.001, momentum=0.99),
             nn.ReLU(),
             nn.Linear(in_features=features, out_features=features),
             nn.Sigmoid(),
@@ -137,7 +137,7 @@ class PulsarModel(nn.Module):
 
         # Final process of combined freq and DM data
         self.block = nn.Sequential(
-            nn.BatchNorm2d(num_features=features, eps=0.001, momentum=0.99),
+            nn.BatchNorm1d(num_features=features, eps=0.001, momentum=0.99),
             nn.ReLU(),
             nn.Linear(in_features=features, out_features=features),
             nn.Sigmoid(),
