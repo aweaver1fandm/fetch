@@ -114,7 +114,7 @@ def train_fullmodel(train: DataLoader,
     dm_model = PreTrainedBlock(dm_component, out_features=1)
     dm_model.load_state_dict(torch.load(f"model_weights/model_{dm_component}_weights.pth", weights_only=True))
     
-    features = PulsarModel[model_index]['features']
+    features = PulsarModel.PARAMS[model_index]['features']
     model = PulsarModel(freq_component, dm_component, features).to(DEVICE)
 
     # Setup training parameters
