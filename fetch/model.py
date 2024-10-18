@@ -40,7 +40,7 @@ class TorchvisionModel(nn.Module):
         # Make input data compatible with pre-trained network
         self.block1= nn.Sequential(
             nn.Conv2d(1, 3, kernel_size=2, stride=(1, 1), padding="valid", dilation=(1,1), bias=True),
-        #    nn.ReLU(),
+            nn.ReLU(),
         )
 
         # Get the pre-trained model from PyTorch
@@ -103,10 +103,8 @@ class TorchvisionModel(nn.Module):
         pass
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
-        #output = self.block1(data)
-        #output = self.pretrained(output)
-
-        output = self.pretrained(data)
+        output = self.block1(data)
+        output = self.pretrained(output)
 
         return output
         #return output.squeeze()
