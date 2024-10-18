@@ -103,10 +103,13 @@ class TorchvisionModel(nn.Module):
         pass
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
-        output = self.block1(data)
-        output = self.pretrained(output)
+        #output = self.block1(data)
+        #output = self.pretrained(output)
 
-        return output.squeeze()
+        output = self.pretrained(data)
+
+        return output
+        #return output.squeeze()
 
 class PulsarModel(nn.Module):
     def __init__(self, freq_module: nn.Module, dm_module: nn.Module, k: int) -> None:
