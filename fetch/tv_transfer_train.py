@@ -262,7 +262,7 @@ def main():
         train_loop(tr_dataloader, model, args.data, loss_fn, optimizer, args.batch_size)
 
         # Validate the model and track best model perfomance
-        avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.prob)
+        avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.probability)
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
             best_model_path = f"model_{args.model}_{args.data}_epoch{t+1}.pth"
