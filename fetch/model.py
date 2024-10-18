@@ -46,19 +46,13 @@ class TorchvisionModel(nn.Module):
         # Get the pre-trained model from PyTorch
         self.pretrained = torch.hub.load("pytorch/vision", model_name.lower(), weights=weights)
 
-        # Freeze all layers
-        #for layer in self.pretrained.children():
-        #    for parameter in layer.parameters():
-        #        parameter.requires_grad = False
-
-        # Original setup
         # Freeze all layers of the pre-trained model at least initially
+        """
         self.pretrained = nn.Sequential(*[i for i in list(self.pretrained.children())[:-1]])
         for child  in self.pretrained.children():
             for param in child.parameters():
-                param.requires_grad = False
+                param.requires_grad = False"""
         
-
         # Replace the classifier layer with custom sequence
         self.pretrained.classifier = nn.Sequential(
             nn.AdaptiveMaxPool2d(output_size=1),
