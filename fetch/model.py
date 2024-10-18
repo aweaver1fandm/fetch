@@ -38,10 +38,10 @@ class TorchvisionModel(nn.Module):
         features = self.PARAMS[model_name]
 
         # Make input data compatible with pre-trained network
-        self.block1= nn.Sequential(
-            nn.Conv2d(1, 3, kernel_size=2, stride=(1, 1), padding="valid", dilation=(1,1), bias=True),
-            nn.ReLU(),
-            )
+        #self.block1= nn.Sequential(
+        #    nn.Conv2d(1, 3, kernel_size=2, stride=(1, 1), padding="valid", dilation=(1,1), bias=True),
+        #    nn.ReLU(),
+        #    )
 
         # Get the pre-trained model from PyTorch
         self.pretrained = torch.hub.load("pytorch/vision", model_name.lower(), weights=weights)
@@ -104,7 +104,7 @@ class TorchvisionModel(nn.Module):
         pass
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
-        output = self.block1(data)
+        #output = self.block1(data)
         output = self.pretrained(output)
 
         return output.squeeze()
