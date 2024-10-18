@@ -59,7 +59,7 @@ def train_loop(dataloader: DataLoader,
             dm_data = dm_data.to(DEVICE)
             pred = model(dm_data)
         else:
-            print(f"Invalid data type provided: {data}")
+            print(f"Invalid data type provided: {data}", flush=True)
             sys.exit(0)
 
         # Compute loss and backpropogate
@@ -250,7 +250,7 @@ def main():
     best_k = 0
 
     for k in k_hyperparameter:
-        print(f"Training run for k={k}")
+        print(f"Training run for k={k}", flush=True)
 
         # Setup model
         model = TorchvisionModel(args.model, out_features=k).to(DEVICE)
@@ -295,7 +295,7 @@ def main():
         model.load_state_dict(torch.load(best_model_path, weights_only=True))
         model.to(DEVICE)
     
-        print(f"Loading test data.  This may take some time...")
+        print(f"Loading test data.  This may take some time...", flush=True)
         test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
         test_data = PulsarData(files=test_data_files)
         tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
