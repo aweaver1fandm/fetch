@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fetch"
-version = "1.0.0"
+version = "2.0.0"
 authors = [
   { name="Tony Weaver", email="aweaver1@fandm.edu" },
 ]
@@ -34,6 +34,7 @@ classifiers = [
 
 [project.scripts]
 train = "fetch.train:main"
+tv_transfer_train = "fetch.tv_transfer_train:main"
 predict = "fetch.predict:main"
 
 [tool.setuptools.packages.find]

@@ -38,21 +38,29 @@ def train_submodel(train: DataLoader,
     General procedure per the paper by Devansh et al.(https://arxiv.org/pdf/1902.06343)
     """
 
-    unfrozen_layers = 0
-    best_model_path = ""
-    best_vloss = 1000000.0
-    DATA = {"DenseNet121": "freq",
-             "DenseNet169": "freq",
-             "DenseNet201": "freq",
-             "VGG16": "dm",
-             "VGG19": "freq",
-             "Inception_V3": "dm",
-             "xception": "dm",
-             "inceptionv2": "dm",
-    }
+    '''
+     best_val_loss = float('inf')
+   epochs_without_improvement = 0
 
-    print(f"Training sub-component {component}", flush=True)
-    print(f"Using {DATA[component]} data", flush=True)
+   for epoch in range(epochs):
+       # ... training loop
+       val_loss = # ... evaluate on validation set
+
+       if val_loss < best_val_loss:
+           best_val_loss = val_loss
+           epochs_without_improvement = 0
+       else:
+           epochs_without_improvement += 1
+
+       if epochs_without_improvement >= patience:
+           print("Early stopping")
+           break
+    '''
+    best_model_path = ""
+    best_vloss = float('inf')
+    
+
+    print(f"Using {data} data", flush=True)
 
     # Setup model
     model = PreTrainedBlock(component, out_features=1).to(DEVICE)
