@@ -105,7 +105,7 @@ class TorchvisionModel(nn.Module):
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         #output = self.block1(data)
-        output = self.pretrained(output)
+        output = self.pretrained(data)
 
         return output.squeeze()
 
