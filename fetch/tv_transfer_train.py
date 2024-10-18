@@ -135,7 +135,7 @@ def test(dataloader: DataLoader, model: nn.Module, data: str, prob: float) -> No
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
-        for freq_data, dm_data, label in dataloader:
+        for freq_data, dm_data, labels in dataloader:
              
             pred = None
 
@@ -156,7 +156,7 @@ def test(dataloader: DataLoader, model: nn.Module, data: str, prob: float) -> No
             #_, predicted = torch.max(pred, 1)
             predicted = (pred >= prob).float()
             predictions.extend(predicted.to('cpu').numpy())
-            truth.extend(label.to('cpu').numpy())
+            truth.extend(labels.to('cpu').numpy())
             
     pred_tensor = torch.tensor(predictions)
     truth_tensor = torch.tensor(truth)
