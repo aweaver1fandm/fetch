@@ -66,7 +66,7 @@ class TorchvisionModel(nn.Module):
             nn.Dropout(p=0.3),
             nn.Flatten(start_dim=1),
             nn.Linear(in_features=features, out_features=out_features),
-            nn.Softmax(dim=1),
+            #nn.Softmax(dim=1),
         )
 
     def freeze_block(self, num_blocks: int) -> nn.Module:
