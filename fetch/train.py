@@ -379,3 +379,74 @@ def main():
     # Save the final model weights
     weight_file = f"/model_{m}_weights.pth"
     torch.save(best_model.state_dict(), args.output_path + weight_file)
+
+
+    ### Real procedure for fused model when I get to it ######
+    # Load training and split 85% to 15% into train/validate
+    print(f"Loading training/validation data.  This may take some time...", flush=True)
+    train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
+    train_data = PulsarData(files=train_data_files)
+    train_data, validate_data = random_split(train_data, [0.85, 0.15])
+
+    tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
+    v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
+    
+    # Train over different hyperparameters of k from 2^5 to 2^9
+    k_hyperparameter = [2**5, 2**6, 2**7, 2**8, 2**9]
+
+    best_model_path = ""
+    best_vloss = float('inf')
+    best_k = 0
+
+    for k in k_hyperparameter:
+        print(f"Training run for k={k}", flush=True)
+
+        # Setup model
+        model = TorchvisionModel(args.model, out_features=k).to(DEVICE)
+
+        # Setup training parameters
+        loss_fn = nn.BCEWithLogitsLoss()
+        optimizer = torch.optim.Adam(params=model.parameters(), lr=args.learning_rate)
+
+        # Start of training/validation
+        epochs_without_improvement = 0
+
+        for t in range(args.epochs):
+            print(f"Epoch {t+1}\n-------------------------------", flush=True)
+
+            # Train the model
+            train_loop(tr_dataloader, model, args.data, loss_fn, optimizer, args.batch_size)
+
+            # Validate the model and track best model perfomance
+            avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.prob)
+            if avg_vloss < best_vloss:
+                best_vloss = avg_vloss
+                best_k = k
+                model_path = f"model_{args.model}_{args.data}_{k}_epoch{t+1}.pth"
+                best_model_path = model_path
+                torch.save(model.state_dict(), model_path)
+                epochs_without_improvement = 0
+            else:
+                epochs_without_improvement += 1
+
+            if epochs_without_improvement >= args.patience:
+                print("Stopping training early")
+                break
+
+    # Save the final best model based on train/validation to output dir
+    outfile = f"{args.output_path}/{best_model_path}"
+    torch.save(model.state_dict(), outfile)
+
+    # Test model
+    tst_dataloader = None
+    if args.test_data_dir is not None:
+        model = TorchvisionModel(args.model, out_features=best_k)
+        model.load_state_dict(torch.load(best_model_path, weights_only=True))
+        model.to(DEVICE)
+    
+        print(f"Loading test data.  This may take some time...", flush=True)
+        test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
+        test_data = PulsarData(files=test_data_files)
+        tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
+        
+        test(tst_dataloader, model, args.data, args.prob)
