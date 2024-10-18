@@ -291,4 +291,4 @@ def main():
         test_data = PulsarData(files=test_data_files)
         tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
         
-        test(tst_dataloader, model, args.data, args.prob)
+        test(tst_dataloader, model, args.data, args.probability)
