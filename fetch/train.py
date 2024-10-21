@@ -12,7 +12,7 @@ from torchvision import datasets
 from torcheval.metrics.functional import binary_precision, binary_recall, binary_f1_score
 
 from fetch.pulsar_data import PulsarData
-from fetch.model import PulsarModel, PreTrainedBlock
+from fetch.model import PulsarModel, TorchVisionModel
 
 import pandas as pd
 
