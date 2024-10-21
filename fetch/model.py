@@ -47,11 +47,10 @@ class TorchvisionModel(nn.Module):
         self.pretrained = torch.hub.load("pytorch/vision", model_name.lower(), weights=weights)
 
         # Freeze all layers of the pre-trained model at least initially
-        """
         self.pretrained = nn.Sequential(*[i for i in list(self.pretrained.children())[:-1]])
         for child  in self.pretrained.children():
             for param in child.parameters():
-                param.requires_grad = False"""
+                param.requires_grad = False
         
         # Replace the classifier layer with custom sequence
         self.pretrained.classifier = nn.Sequential(
