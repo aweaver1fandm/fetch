@@ -46,7 +46,7 @@ def train_loop(dataloader: DataLoader,
         freq_data = freq_data + noise
         freq_data = freq_data.to(DEVICE)
 
-        dm_data.to(DEVICE)
+        dm_data = dm_data.to(DEVICE)
         pred = model(freq_data, dm_data)
         
         # Compute loss and backpropogate
@@ -84,7 +84,7 @@ def validate_loop(dataloader: DataLoader,
 
             # Load data to device and make predictions
             freq_data = freq_data.to(DEVICE)
-            dm_data.to(DEVICE)
+            dm_data = dm_data.to(DEVICE)
             pred = model(freq_data, dm_data)
             
             # Convert to either 0 or 1 based on prediction probability
@@ -120,7 +120,7 @@ def test(dataloader: DataLoader, model: nn.Module, prob: float) -> None:
             
             # Load data to device and make predictions
             freq_data = freq_data.to(DEVICE)
-            dm_data.to(DEVICE)
+            dm_data = dm_data.to(DEVICE)
             pred = model(freq_data, dm_data)
 
             #_, predicted = torch.max(pred, 1)
