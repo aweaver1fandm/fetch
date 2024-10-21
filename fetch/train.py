@@ -243,18 +243,12 @@ def main():
         # Loading the saved models with strict=false ensures that
         # the classifier block, which was trained with outfeatures=1
         # will load even though the outfeatures will be k now
-        freq_model_path = f"model_weights/{args.freq_model}_freq.pth"
+        #freq_model_path = f"model_weights/{args.freq_model}_freq.pth"
         freq_model = TorchvisionModel(args.freq_model, out_features=k)
-        state_dict = torch.load(freq_model_path)
-        new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("classifier")}
-        freq_model.load_state_dict(new_state_dict, strict=False)
         #freq_model.load_state_dict(torch.load(freq_model_path, weights_only=True), strict=False)
 
-        dm_model_path = f"model_weights/{args.dm_model}_dm.pth"
+        #dm_model_path = f"model_weights/{args.dm_model}_dm.pth"
         dm_model = TorchvisionModel(args.dm_model, out_features=k)
-        state_dict = torch.load(dm_model_path)
-        new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("classifier")}
-        dm_model.load_state_dict(new_state_dict, strict=False)
         #dm_model.load_state_dict(torch.load(freq_model_path, weights_only=True), strict=False)
 
         # Setup model
