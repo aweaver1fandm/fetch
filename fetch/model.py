@@ -105,8 +105,7 @@ class TorchvisionModel(nn.Module):
         output = self.block1(data)
         output = self.pretrained(output)
 
-        return output
-        #return output.squeeze()
+        return output.squeeze()
 
 class PulsarModel(nn.Module):
     def __init__(self, freq_module: nn.Module, dm_module: nn.Module, k: int) -> None:
