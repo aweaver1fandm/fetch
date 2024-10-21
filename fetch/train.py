@@ -258,7 +258,7 @@ def main():
         #dm_model.load_state_dict(torch.load(freq_model_path, weights_only=True), strict=False)
 
         # Setup model
-        model = PulsarModel(args.freq_model, args.dm_model, out_features=k).to(DEVICE)
+        model = PulsarModel(args.freq_model, args.dm_model, k).to(DEVICE)
 
         # Setup training parameters
         loss_fn = nn.BCEWithLogitsLoss()
