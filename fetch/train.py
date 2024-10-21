@@ -23,7 +23,6 @@ os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 def train_loop(dataloader: DataLoader, 
                model: nn.Module,
-               data: str,
                loss_fn, 
                optimizer,
                batch_size: int,
@@ -39,24 +38,17 @@ def train_loop(dataloader: DataLoader,
 
     for batch, (freq_data, dm_data, labels) in enumerate(dataloader):
 
-        pred = None
-
         # Load labels to device
         labels = labels.to(DEVICE)
 
         # Add some noise to freq data to help avoid overtraining
-        if data == "freq":
-            noise = torch.randn_like(freq_data) * .1
-            freq_data = freq_data + noise
-            freq_data = freq_data.to(DEVICE)
-            pred = model(freq_data)
-        elif data == "dm":
-            dm_data = dm_data.to(DEVICE)
-            pred = model(dm_data)
-        else:
-            print(f"Invalid data type provided: {data}", flush=True)
-            sys.exit(0)
+        noise = torch.randn_like(freq_data) * .1
+        freq_data = freq_data + noise
+        freq_data = freq_data.to(DEVICE)
 
+        dm_data.to(DEVICE)
+        pred = model(freq_data, dm_data)
+        
         # Compute loss and backpropogate
         loss = loss_fn(pred, labels.float())
         loss.backward()
@@ -69,7 +61,6 @@ def train_loop(dataloader: DataLoader,
     
 def validate_loop(dataloader: DataLoader, 
                   model: nn.Module, 
-                  data: str,
                   loss_fn,
                   prob: float,
     ) -> float:
@@ -88,21 +79,13 @@ def validate_loop(dataloader: DataLoader,
     with torch.no_grad():
         for freq_data, dm_data, labels in dataloader:
 
-            pred = None
-
             # Load labels to device
             labels = labels.to(DEVICE)
 
             # Load data to device and make predictions
-            if data == "freq":
-                freq_data = freq_data.to(DEVICE)
-                pred = model(freq_data)
-            elif data == "dm":
-                dm_data = dm_data.to(DEVICE)
-                pred = model(dm_data)
-            else:
-                print(f"Invalid data type provided: {data}")
-                sys.exit(0)
+            freq_data = freq_data.to(DEVICE)
+            dm_data.to(DEVICE)
+            pred = model(freq_data, dm_data)
             
             # Convert to either 0 or 1 based on prediction probability
             pred = (pred >= prob).float()
@@ -115,7 +98,7 @@ def validate_loop(dataloader: DataLoader,
 
     return validation_loss
 
-def test(dataloader: DataLoader, model: nn.Module, data: str, prob: float) -> None:
+def test(dataloader: DataLoader, model: nn.Module, prob: float) -> None:
     r"""
 
     Performs testing on fully trained model
@@ -132,21 +115,13 @@ def test(dataloader: DataLoader, model: nn.Module, data: str, prob: float) -> No
     with torch.no_grad():
         for freq_data, dm_data, labels in dataloader:
              
-            pred = None
-
             # Load labels to device
             labels = labels.to(DEVICE)
             
             # Load data to device and make predictions
-            if data == "freq":
-                freq_data = freq_data.to(DEVICE)
-                pred = model(freq_data)
-            elif data == "dm":
-                dm_data = dm_data.to(DEVICE)
-                pred = model(dm_data)
-            else:
-                print(f"Invalid data type provided: {data}")
-                sys.exit(0)
+            freq_data = freq_data.to(DEVICE)
+            dm_data.to(DEVICE)
+            pred = model(freq_data, dm_data)
 
             #_, predicted = torch.max(pred, 1)
             predicted = (pred >= prob).float()
@@ -271,7 +246,7 @@ def main():
             print(f"Epoch {t+1}\n-------------------------------", flush=True)
 
             # Train the model
-            train_loop(tr_dataloader, model, "all", loss_fn, optimizer, args.batch_size)
+            train_loop(tr_dataloader, model, loss_fn, optimizer, args.batch_size)
 
             # Validate the model and track best model perfomance
             avg_vloss = validate_loop(v_dataloader, model, "all", loss_fn, args.prob)
