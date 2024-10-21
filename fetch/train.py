@@ -268,7 +268,7 @@ def main():
             train_loop(tr_dataloader, model, "all", loss_fn, optimizer, args.batch_size)
 
             # Validate the model and track best model perfomance
-            avg_vloss = validate_loop(v_dataloader, model, "all"", loss_fn, args.prob)
+            avg_vloss = validate_loop(v_dataloader, model, "all", loss_fn, args.prob)
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
                 best_k = k
