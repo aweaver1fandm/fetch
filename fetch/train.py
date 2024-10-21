@@ -21,78 +21,6 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
-def train_submodel(train: DataLoader,
-                   validate: DataLoader,
-                   test: DataLoader,
-                   component: str,
-                   batch_size: int,
-                   learning_rate: float,
-                   epochs: int,
-                   prob: float,
-    ) -> nn.Module:
-    r"""
-
-    Performs training/validation/testing for a sub-component of the PulsarModel
-    The sub-component will be a pre-trained model to process either frequency or DM data
-
-    General procedure per the paper by Devansh et al.(https://arxiv.org/pdf/1902.06343)
-    """
-
-    '''
-     best_val_loss = float('inf')
-   epochs_without_improvement = 0
-
-   for epoch in range(epochs):
-       # ... training loop
-       val_loss = # ... evaluate on validation set
-
-       if val_loss < best_val_loss:
-           best_val_loss = val_loss
-           epochs_without_improvement = 0
-       else:
-           epochs_without_improvement += 1
-
-       if epochs_without_improvement >= patience:
-           print("Early stopping")
-           break
-    '''
-    best_model_path = ""
-    best_vloss = float('inf')
-    
-
-    print(f"Using {data} data", flush=True)
-
-    # Setup model
-    model = PreTrainedBlock(component, out_features=1).to(DEVICE)
-
-    # Setup training parameters
-    loss_fn = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate)
-
-    for t in range(epochs):
-        print(f"Epoch {t+1}\n-------------------------------", flush=True)
-
-        # Train the model
-        train_loop(train, model, DATA[component], loss_fn, optimizer, batch_size)
-
-        # Validate the model and track best model perfomance
-        avg_vloss = validate_loop(validate, model, DATA[component], loss_fn, prob)
-        if avg_vloss < best_vloss:
-            best_vloss = avg_vloss
-            model_path = f"model_{component}_epoch{t+1}.pth"
-            best_model_path = model_path
-            torch.save(model.state_dict(), model_path)
-
-    # Load the best model.  Even if not testing it we need to return it
-    model = PreTrainedBlock(component, out_features=1)
-    model.load_state_dict(torch.load(best_model_path, weights_only=True))
-    
-    # Perform testing
-    if test is not None:
-        model.to(DEVICE)
-        test_model(test, model, DATA[component], prob)
-
-    return model
     
 def train_fullmodel(train: DataLoader,
                    validate: DataLoader,
@@ -325,9 +253,14 @@ def main():
         required=True,
     )
     parser.add_argument(
-        "-m", "--model", help="Index of the model to train", required=True, type=str
+        "-fm", "--freq_model", help="Freq data processing model", required=True, type=str
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "-dm", "--dm_model", help="DM data processing model", required=True, type=str
+    )
+    parser.add_argument(
+        "-pa", "--patience", help="Num epochs with no improvement after which training will be stopped", default=3, type=int
+    )
     parser.add_argument(
         "-lr", "--learning_rate", help="Training learning rate", default=1e-3, type=float
     )
@@ -341,47 +274,7 @@ def main():
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
 
     print(f"Using {DEVICE} for computation", flush=True)
-    
-    m = args.model
-    batch_size = args.batch_size
-    lr = args.learning_rate
-    e = args.epochs
-    p = args.probability
 
-    # Load training and split 85% to 15% into train/validate
-    print(f"Loading training data.  This may take some time...", flush=True)
-    train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
-    train_data = PulsarData(files=train_data_files)
-    train_data, validate_data = random_split(train_data, [0.85, 0.15])
-
-    tr_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    v_dataloader = DataLoader(validate_data, batch_size=batch_size, shuffle=False)
-
-    # Get test data if provided
-    tst_dataloader = None
-    if args.test_data_dir is not None:
-        print(f"Loading test data.  This may take some time...")
-        test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
-        test_data = PulsarData(files=test_data_files)
-        tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
-
-    best_model = None
-    # Perform training/validation and possibly testing
-    print(f"--- Beginning training ---\n")
-    if m in PreTrainedBlock.PARAMS:
-        best_model = train_submodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr, e, p)
-    elif m in PulsarModel.PARAMS:
-        best_model = train_fullmodel(tr_dataloader, v_dataloader, tst_dataloader, m, batch_size, lr, e, p)
-    else:
-        print(f"Invalid model argument given {args.model}")
-        sys.exit(1)
-    
-    # Save the final model weights
-    weight_file = f"/model_{m}_weights.pth"
-    torch.save(best_model.state_dict(), args.output_path + weight_file)
-
-
-    ### Real procedure for fused model when I get to it ######
     # Load training and split 85% to 15% into train/validate
     print(f"Loading training/validation data.  This may take some time...", flush=True)
     train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
@@ -401,8 +294,19 @@ def main():
     for k in k_hyperparameter:
         print(f"Training run for k={k}", flush=True)
 
+        # Loading the saved models with strict=false ensures that
+        # the classifier block, which was trained with outfeatures=1
+        # will load even though the outfeatures will be k now
+        freq_model_path = f"model_weights/{args.freq_model}_freq.pth"
+        freq_model = TorchvisionModel(args.freq_model, out_features=k)
+        freq_model.load_state_dict(torch.load(freq_model_path, weights_only=True, strict=False))
+
+        dm_model_path = f"model_weights/{args.dm_model}_dm.pth"
+        dm_model = TorchvisionModel(args.dm_model, out_features=k)
+        dm_model.load_state_dict(torch.load(freq_model_path, weights_only=True, strict=False))
+
         # Setup model
-        model = TorchvisionModel(args.model, out_features=k).to(DEVICE)
+        model = TorchvisionModel(args.freq_model, args.dm_model, out_features=k).to(DEVICE)
 
         # Setup training parameters
         loss_fn = nn.BCEWithLogitsLoss()
@@ -422,7 +326,7 @@ def main():
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
                 best_k = k
-                model_path = f"model_{args.model}_{args.data}_{k}_epoch{t+1}.pth"
+                model_path = f"model_{args.freq_model}_{args.dm_model}_{k}_epoch{t+1}.pth"
                 best_model_path = model_path
                 torch.save(model.state_dict(), model_path)
                 epochs_without_improvement = 0
@@ -440,7 +344,7 @@ def main():
     # Test model
     tst_dataloader = None
     if args.test_data_dir is not None:
-        model = TorchvisionModel(args.model, out_features=best_k)
+        model = TorchvisionModel(args.model, out_features=1)
         model.load_state_dict(torch.load(best_model_path, weights_only=True))
         model.to(DEVICE)
     
@@ -449,4 +353,4 @@ def main():
         test_data = PulsarData(files=test_data_files)
         tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
         
-        test(tst_dataloader, model, args.data, args.prob)
+        test(tst_dataloader, model, args.data, args.probability)
