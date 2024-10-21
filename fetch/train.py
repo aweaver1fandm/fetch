@@ -21,68 +21,6 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
-    
-def train_fullmodel(train: DataLoader,
-                   validate: DataLoader,
-                   test: DataLoader,
-                   model_index: str,
-                   batch_size: int,
-                   learning_rate: float,
-                   epochs: int,
-                   prob: float,
-    ) -> nn.Module:
-    r"""
-
-    Performs training/validation for the full PulsarModel
-
-    General procedure per the paper by Devansh et al.(https://arxiv.org/pdf/1902.06343)
-    """
-
-    best_model_path = ""
-    best_vloss = 1000000.0
-
-    # Get the pre-trained components and build full model
-    k = PulsarModel.PARAMS[model_index]['k']
-    freq_component = PulsarModel.PARAMS[model_index]['freq']
-    freq_model = PreTrainedBlock(freq_component, out_features=k)
-    freq_model.load_state_dict(torch.load(f"model_weights/model_{freq_component}_weights.pth", weights_only=True))
-
-    dm_component = PulsarModel.PARAMS[model_index]['dm']
-    dm_model = PreTrainedBlock(dm_component, out_features=k)
-    dm_model.load_state_dict(torch.load(f"model_weights/model_{dm_component}_weights.pth", weights_only=True))
-    
-    features = PulsarModel.PARAMS[model_index]['features']
-    model = PulsarModel(freq_model, dm_model, features).to(DEVICE)
-
-    # Setup training parameters
-    loss_fn = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate)
-
-    for t in range(epochs):
-        print(f"Epoch {t+1}\n-------------------------------", flush=True)
-
-        # Train the model
-        train_loop(train, model, "all", loss_fn, optimizer, batch_size)
-
-        # Validate the model and track best model perfomance
-        avg_vloss = validate_loop(validate, model, "all", loss_fn, prob)
-        if avg_vloss < best_vloss:
-            best_vloss = avg_vloss
-            model_path = f"model_{component}_epoch{t+1}.pth"
-            best_model_path = model_path
-            torch.save(model.state_dict(), model_path)
-
-    # Load the best model.  Even if not testing it we need to return it
-    model = PulsarModel(component)
-    model.load_state_dict(torch.load(best_model_path, weights_only=True))
-    
-    # Perform testing
-    if test is not None:
-        model.to(DEVICE)
-        test_model(test, model, "all", prob)
-
-    return model
-
 def train_loop(dataloader: DataLoader, 
                model: nn.Module,
                data: str,
@@ -91,8 +29,7 @@ def train_loop(dataloader: DataLoader,
                batch_size: int,
     ) -> None:
     r"""
-
-    Perform a single pass of training for some model or model sub-component
+    Perform a single pass of training on a model
     """
 
     size = len(dataloader.dataset)
@@ -100,27 +37,28 @@ def train_loop(dataloader: DataLoader,
     # Set the model to training mode - important for batch normalization and dropout layers
     model.train()
 
-    for batch, (freq_data, dm_data, label) in enumerate(dataloader):
+    for batch, (freq_data, dm_data, labels) in enumerate(dataloader):
+
+        pred = None
+
+        # Load labels to device
+        labels = labels.to(DEVICE)
 
         # Add some noise to freq data to help avoid overtraining
-        noise = torch.randn_like(freq_data) * .1
-        freq_data = freq_data + noise
-        
-        # Load model to GPU/CPU
-        freq_data = freq_data.to(DEVICE)
-        dm_data = dm_data.to(DEVICE)
-        label = label.to(DEVICE)
-
-        # Make prediction and compute loss
-        if data == "all":
-            pred = model(freq_data, dm_data)
-        elif data == "freq":
+        if data == "freq":
+            noise = torch.randn_like(freq_data) * .1
+            freq_data = freq_data + noise
+            freq_data = freq_data.to(DEVICE)
             pred = model(freq_data)
-        else:
+        elif data == "dm":
+            dm_data = dm_data.to(DEVICE)
             pred = model(dm_data)
-        loss = loss_fn(pred, label.float())
+        else:
+            print(f"Invalid data type provided: {data}", flush=True)
+            sys.exit(0)
 
-        # Backpropogate
+        # Compute loss and backpropogate
+        loss = loss_fn(pred, labels.float())
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
@@ -137,46 +75,50 @@ def validate_loop(dataloader: DataLoader,
     ) -> float:
     r"""
     
-    Performs a single validation pass for some model or model sub-component
+    Performs a single validation pass for a model
     """
 
     model.eval()
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
-    test_loss, correct = 0, 0
+    validation_loss, correct = 0, 0
 
-    # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
-    # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
+    # Evaluating the model with torch.no_grad() ensures 
+    # that no gradients are computed during validation
     with torch.no_grad():
-        for freq_data, dm_data, label in dataloader:
-            # Load model to GPU/CPU
-            freq_data = freq_data.to(DEVICE)
-            dm_data = dm_data.to(DEVICE)
-            label = label.to(DEVICE)
+        for freq_data, dm_data, labels in dataloader:
 
-            # Make prediction and compute loss
-            if data == "all":
-                pred = model(freq_data, dm_data)
-            elif data == "freq":
+            pred = None
+
+            # Load labels to device
+            labels = labels.to(DEVICE)
+
+            # Load data to device and make predictions
+            if data == "freq":
+                freq_data = freq_data.to(DEVICE)
                 pred = model(freq_data)
-            else:
+            elif data == "dm":
+                dm_data = dm_data.to(DEVICE)
                 pred = model(dm_data)
+            else:
+                print(f"Invalid data type provided: {data}")
+                sys.exit(0)
             
             # Convert to either 0 or 1 based on prediction probability
             pred = (pred >= prob).float()
-            test_loss += loss_fn(pred, label.float()).item()
-            correct += (pred  == label).type(torch.float).sum().item()
+            validation_loss += loss_fn(pred, labels.float()).item()
+            correct += (pred  == labels).type(torch.float).sum().item()
 
-    test_loss /= num_batches
+    validation_loss /= num_batches
     correct /= size
-    print(f"Validation Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n", flush=True)
+    print(f"Validation Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {validation_loss:>8f} \n", flush=True)
 
-    return test_loss
+    return validation_loss
 
-def test_model(dataloader: DataLoader, model: nn.Module, data: str, prob: float) -> None:
+def test(dataloader: DataLoader, model: nn.Module, data: str, prob: float) -> None:
     r"""
 
-    Performs testing on some fully trained model or model sub-component
+    Performs testing on fully trained model
     """
     # Set the model to evaluation mode - important for batch normalization and dropout layers
     model.eval()
@@ -188,24 +130,28 @@ def test_model(dataloader: DataLoader, model: nn.Module, data: str, prob: float)
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
-        for freq_data, dm_data, label in dataloader:
+        for freq_data, dm_data, labels in dataloader:
+             
+            pred = None
 
-            freq_data = freq_data.to(DEVICE)
-            dm_data = dm_data.to(DEVICE)
-            label = label.to(DEVICE)
-
-            # Get predictions from model and move to CPU
-            if data == "all":
-                pred = model(freq_data, dm_data)
-            elif data == "freq":
+            # Load labels to device
+            labels = labels.to(DEVICE)
+            
+            # Load data to device and make predictions
+            if data == "freq":
+                freq_data = freq_data.to(DEVICE)
                 pred = model(freq_data)
-            else:
+            elif data == "dm":
+                dm_data = dm_data.to(DEVICE)
                 pred = model(dm_data)
+            else:
+                print(f"Invalid data type provided: {data}")
+                sys.exit(0)
 
             #_, predicted = torch.max(pred, 1)
             predicted = (pred >= prob).float()
             predictions.extend(predicted.to('cpu').numpy())
-            truth.extend(label.to('cpu').numpy())
+            truth.extend(labels.to('cpu').numpy())
             
     pred_tensor = torch.tensor(predictions)
     truth_tensor = torch.tensor(truth)
@@ -319,10 +265,10 @@ def main():
             print(f"Epoch {t+1}\n-------------------------------", flush=True)
 
             # Train the model
-            train_loop(tr_dataloader, model, args.data, loss_fn, optimizer, args.batch_size)
+            train_loop(tr_dataloader, model, "all", loss_fn, optimizer, args.batch_size)
 
             # Validate the model and track best model perfomance
-            avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.prob)
+            avg_vloss = validate_loop(v_dataloader, model, "all"", loss_fn, args.prob)
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
                 best_k = k
@@ -353,4 +299,4 @@ def main():
         test_data = PulsarData(files=test_data_files)
         tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
         
-        test(tst_dataloader, model, args.data, args.probability)
+        test(tst_dataloader, model, "all", args.probability)
