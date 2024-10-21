@@ -134,9 +134,6 @@ class PulsarModel(nn.Module):
         )
 
     def forward(self, freq_input: torch.Tensor, dm_input: torch.Tensor) -> torch.Tensor:
-        print(f"freq_input type is {type(freq_input)}", flush=True)
-        print(f"dm_input type is {type(dm_input)}", flush=True)
-        
         freq_output = self.freq_model(freq_input)
         dm_output = self.dm_model(dm_input)
 

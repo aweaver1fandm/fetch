@@ -47,9 +47,6 @@ def train_loop(dataloader: DataLoader,
         freq_data = freq_data.to(DEVICE)
 
         dm_data = dm_data.to(DEVICE)
-
-        print(f"freq_data type is {type(freq_data)}", flush=True)
-        print(f"dm_data type is {type(dm_data)}", flush=True)
         pred = model(freq_data, dm_data)
         
         # Compute loss and backpropogate
@@ -236,7 +233,7 @@ def main():
         #dm_model.load_state_dict(torch.load(freq_model_path, weights_only=True), strict=False)
 
         # Setup model
-        model = PulsarModel(args.freq_model, args.dm_model, k).to(DEVICE)
+        model = PulsarModel(freq_model, dm_model, k).to(DEVICE)
 
         # Setup training parameters
         loss_fn = nn.BCEWithLogitsLoss()
