@@ -206,7 +206,6 @@ def main():
     parser.add_argument(
         "-m", "--model", help="Name of the model to train", required=True, type=str
     )
-    args = parser.parse_args()
     parser.add_argument(
         "-lr", "--learning_rate", help="Training learning rate", default=1e-3, type=float
     )
