@@ -47,6 +47,9 @@ def train_loop(dataloader: DataLoader,
         freq_data = freq_data.to(DEVICE)
 
         dm_data = dm_data.to(DEVICE)
+
+        print(f"freq_data type is {type(freq_data)}", flush=True)
+        print(f"dm_data type is {type(dm_data)}", flush=True)
         pred = model(freq_data, dm_data)
         
         # Compute loss and backpropogate
