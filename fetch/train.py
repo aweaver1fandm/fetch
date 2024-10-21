@@ -245,11 +245,11 @@ def main():
         # will load even though the outfeatures will be k now
         freq_model_path = f"model_weights/{args.freq_model}_freq.pth"
         freq_model = TorchvisionModel(args.freq_model, out_features=k)
-        freq_model.load_state_dict(torch.load(freq_model_path, weights_only=True, strict=False))
+        freq_model.load_state_dict(torch.load(freq_model_path, weights_only=True), strict=False))
 
         dm_model_path = f"model_weights/{args.dm_model}_dm.pth"
         dm_model = TorchvisionModel(args.dm_model, out_features=k)
-        dm_model.load_state_dict(torch.load(freq_model_path, weights_only=True, strict=False))
+        dm_model.load_state_dict(torch.load(freq_model_path, weights_only=True), strict=False))
 
         # Setup model
         model = TorchvisionModel(args.freq_model, args.dm_model, out_features=k).to(DEVICE)
