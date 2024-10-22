@@ -19,8 +19,6 @@ from torcheval.metrics.functional import binary_precision, binary_recall, binary
 from fetch.pulsar_data import PulsarData
 from fetch.model import TorchvisionModel
 
-import pandas as pd
-
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

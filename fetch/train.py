@@ -14,8 +14,6 @@ from torcheval.metrics.functional import binary_precision, binary_recall, binary
 from fetch.pulsar_data import PulsarData
 from fetch.model import PulsarModel, TorchvisionModel
 
-import pandas as pd
-
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -215,24 +213,22 @@ def main():
     for k in k_hyperparameter:
         print(f"Training run for k={k}", flush=True)
 
-        # Loading the saved models with strict=false ensures that
-        # the classifier block, which was trained with outfeatures=1
-        # will load even though the outfeatures will be k now
+        # Loading the saved individual models with strict=false 
+        # Ensures that model will load and populate with trained weights
+        # even though classifier block was originally trained with outfeatures=1
         freq_model_path = f"model_weights/{args.freq_model}_freq.pth"
         freq_model = TorchvisionModel(args.freq_model, out_features=k)
         state_dict = torch.load(freq_model_path, weights_only=True)
         new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("pretrained.classifier")}
         freq_model.load_state_dict(new_state_dict, strict=False)
-        #freq_model.load_state_dict(torch.load(freq_model_path, weights_only=True), strict=False)
 
         dm_model_path = f"model_weights/{args.dm_model}_dm.pth"
         dm_model = TorchvisionModel(args.dm_model, out_features=k)
         state_dict = torch.load(dm_model_path, weights_only=True)
         new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("pretrained.classifier")}
         dm_model.load_state_dict(new_state_dict, strict=False)
-        #dm_model.load_state_dict(torch.load(freq_model_path, weights_only=True), strict=False)
 
-        # Setup model
+        # Setup combined model
         model = PulsarModel(freq_model, dm_model, k).to(DEVICE)
 
         # Setup training parameters
@@ -255,7 +251,7 @@ def main():
                 best_k = k
                 model_path = f"model_{args.freq_model}_{args.dm_model}_{k}_epoch{t+1}.pth"
                 best_model_path = model_path
-                torch.save(model.state_dict(), model_path)
+                #torch.save(model.state_dict(), model_path)
                 epochs_without_improvement = 0
             else:
                 epochs_without_improvement += 1
@@ -271,7 +267,20 @@ def main():
     # Test model
     tst_dataloader = None
     if args.test_data_dir is not None:
-        model = TorchvisionModel(args.model, out_features=1)
+        freq_model_path = f"model_weights/{args.freq_model}_freq.pth"
+        freq_model = TorchvisionModel(args.freq_model, out_features=best_k)
+        state_dict = torch.load(freq_model_path, weights_only=True)
+        new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("pretrained.classifier")}
+        freq_model.load_state_dict(new_state_dict, strict=False)
+
+        dm_model_path = f"model_weights/{args.dm_model}_dm.pth"
+        dm_model = TorchvisionModel(args.dm_model, out_features=best_k)
+        state_dict = torch.load(dm_model_path, weights_only=True)
+        new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("pretrained.classifier")}
+        dm_model.load_state_dict(new_state_dict, strict=False)
+
+        # Setup model
+        model = PulsarModel(freq_model, dm_model, best_k)
         model.load_state_dict(torch.load(best_model_path, weights_only=True))
         model.to(DEVICE)
     
