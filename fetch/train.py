@@ -249,7 +249,7 @@ def main():
             train_loop(tr_dataloader, model, loss_fn, optimizer, args.batch_size)
 
             # Validate the model and track best model perfomance
-            avg_vloss = validate_loop(v_dataloader, model, "all", loss_fn, args.probability)
+            avg_vloss = validate_loop(v_dataloader, model, loss_fn, args.probability)
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
                 best_k = k
@@ -280,4 +280,4 @@ def main():
         test_data = PulsarData(files=test_data_files)
         tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
         
-        test(tst_dataloader, model, "all", args.probability)
+        test(tst_dataloader, model, args.probability)
