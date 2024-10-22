@@ -126,10 +126,10 @@ class PulsarModel(nn.Module):
         self.dm_model = dm_module
 
         # Final process of combined freq and DM data
-        self.block = nn.Sequential(
+        self.classifier = nn.Sequential(
             nn.BatchNorm1d(num_features=k, eps=0.001, momentum=0.99),
             nn.ReLU(),
-            nn.Linear(in_features=k, out_features=k),
+            nn.Linear(in_features=k, out_features=1),
             nn.Sigmoid(),
         )
 
@@ -139,6 +139,6 @@ class PulsarModel(nn.Module):
 
         # Combine the outputs and produce final classification
         output = torch.mul(freq_output, dm_output)
-        output = self.block(output)
+        output = self.classifier(output)
 
         return output
