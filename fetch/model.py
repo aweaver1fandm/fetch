@@ -141,4 +141,4 @@ class PulsarModel(nn.Module):
         output = torch.mul(freq_output, dm_output)
         output = self.classifier(output)
 
-        return output
+        return output.squeeze()
