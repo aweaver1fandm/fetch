@@ -51,12 +51,14 @@ class TorchvisionModel(nn.Module):
             self._freeze_densenet(unfreeze_blocks)
         
         # Replace/set the classifier layer
+        # With a denselayer ??? look at paper
         self.model.classifier = nn.Sequential(
-            nn.AdaptiveMaxPool1d(output_size=1),
-            nn.BatchNorm2d(num_features=features, eps=0.001, momentum=0.99),
-            nn.Dropout(p=0.3),
-            nn.Flatten(start_dim=1),
+            #nn.AdaptiveMaxPool2d(output_size=1),
+            #nn.BatchNorm2d(num_features=features, eps=0.001, momentum=0.99),
+            ##nn.Dropout(p=0.3),
+            #nn.Flatten(start_dim=1),
             nn.Linear(in_features=features, out_features=out_features),
+            nn.Dropout(p=0.3),
         )
 
     def _freeze_densenet(self, unfreeze_blocks: int) -> None:
