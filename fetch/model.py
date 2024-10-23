@@ -48,7 +48,7 @@ class TorchvisionModel(nn.Module):
         self.pretrained = torch.hub.load("pytorch/vision", model_name.lower(), weights=weights)
 
         if self.model_name.startswith("DenseNet"):
-            _freeze_densenet(unfreeze_blocks)
+            self._freeze_densenet(unfreeze_blocks)
         
         # Replace/set the classifier layer
         self.pretrained.classifier = nn.Sequential(
