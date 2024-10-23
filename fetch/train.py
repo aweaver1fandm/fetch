@@ -251,7 +251,7 @@ def main():
                 best_k = k
                 model_path = f"model_{args.freq_model}_{args.dm_model}_{k}_epoch{t+1}.pth"
                 best_model_path = model_path
-                #torch.save(model.state_dict(), model_path)
+                torch.save(model.state_dict(), model_path)
                 epochs_without_improvement = 0
             else:
                 epochs_without_improvement += 1
