@@ -45,13 +45,13 @@ class TorchvisionModel(nn.Module):
         )
 
         # Get the pre-trained model from PyTorch
-        self.pretrained = torch.hub.load("pytorch/vision", model_name.lower(), weights=weights)
+        self.model = torch.hub.load("pytorch/vision", model_name.lower(), weights=weights)
 
         if self.model_name.startswith("DenseNet"):
             self._freeze_densenet(unfreeze_blocks)
         
         # Replace/set the classifier layer
-        self.pretrained.classifier = nn.Sequential(
+        self.model.classifier = nn.Sequential(
             nn.AdaptiveMaxPool2d(output_size=1),
             nn.BatchNorm2d(num_features=features, eps=0.001, momentum=0.99),
             nn.Dropout(p=0.3),
@@ -63,46 +63,42 @@ class TorchvisionModel(nn.Module):
 
         # Freeze all layers to start
         #for param in self.pretrained.features.parameters():
-        #    param.requires_grad = False
-
-        self.pretrained = nn.Sequential(*[i for i in list(self.pretrained.children())[:-1]])
-        for child  in self.pretrained.children():
-            for param in child.parameters():
-                param.requires_grad = False
+        for param in self.model.parameters():
+            param.requires_grad = False
 
         if unfreeze_blocks == 3:
-            for param in self.pretrained.features.denseblock4.paramaters():
+            for param in self.model.features.denseblock4.parameters():
                 param.requires_grad = True
-            for param in self.pretrained.features.denseblock3.paramaters():
+            for param in self.model.features.denseblock3.parameters():
                 param.requires_grad = True
-            for param in self.pretrained.features.denseblock2.paramaters():
+            for param in self.model.features.denseblock2.parameters():
                 param.requires_grad = True
         elif unfreeze_blocks == 2:
-            for param in self.pretrained.features.denseblock4.paramaters():
+            for param in self.model.features.denseblock4.parameters():
                 param.requires_grad = True
-            for param in self.pretrained.features.denseblock3.paramaters():
+            for param in self.model.features.denseblock3.parameters():
                 param.requires_grad = True
         elif unfreeze_blocks == 1:
-            for param in self.pretrained.features.denseblock4.paramaters():
+            for param in self.model.features.denseblock4.parameters():
                 param.requires_grad = True
             
     def _freeze_vgg(self, num_blocks: int) -> None:
 
         # Freeze all layers to start
-        for param in self.pretrained.features.parameters():
+        for param in self.model.features.parameters():
             param.requires_grad = False
 
     def _freeze_inception3(self, num_blocks: int) -> None:
 
         # Freeze all layers. Note: Inception does not have features
-        self.pretrained = nn.Sequential(*[i for i in list(self.pretrained.children())[:-1]])
+        self.model = nn.Sequential(*[i for i in list(self.pretrained.children())[:-1]])
         for child  in self.pretrained.children():
             for param in child.parameters():
                 param.requires_grad = False
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         output = self.block1(data)
-        output = self.pretrained(output)
+        output = self.model(output)
 
         return output.squeeze()
 
