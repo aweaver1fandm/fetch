@@ -18,7 +18,7 @@ class TorchvisionModel(nn.Module):
              "VGG19": 512,
              "Inception_V3": 2048,
     }   
-    def __init__(self, model_name: str, out_features: int) -> None:
+    def __init__(self, model_name: str, out_features: int, unfreeze_blocks: int = 0) -> None:
         r"""
         
         Creates a processing block containing a pre-trained torchvision
@@ -28,6 +28,7 @@ class TorchvisionModel(nn.Module):
         :param out_features: Number of output features for classifier 
                              This is the k training hyperparamter
                              referred to in the original FETCH paper
+        :param unfreeze_blocks: Number of feature blocks to unfreeze
         """
         super().__init__()
         
@@ -46,13 +47,10 @@ class TorchvisionModel(nn.Module):
         # Get the pre-trained model from PyTorch
         self.pretrained = torch.hub.load("pytorch/vision", model_name.lower(), weights=weights)
 
-        # Freeze all layers of the pre-trained model at least initially
-        self.pretrained = nn.Sequential(*[i for i in list(self.pretrained.children())[:-1]])
-        for child  in self.pretrained.children():
-            for param in child.parameters():
-                param.requires_grad = False
+        if self.model_name.startswith("DenseNet"):
+            _freeze_densenet(unfreeze_blocks)
         
-        # Replace the classifier layer with custom sequence
+        # Replace/set the classifier layer
         self.pretrained.classifier = nn.Sequential(
             nn.AdaptiveMaxPool2d(output_size=1),
             nn.BatchNorm2d(num_features=features, eps=0.001, momentum=0.99),
@@ -61,45 +59,41 @@ class TorchvisionModel(nn.Module):
             nn.Linear(in_features=features, out_features=out_features),
         )
 
-    def freeze_block(self, num_blocks: int) -> nn.Module:
-        """
-        Tricky because different torchvision models are setup differently
+    def _freeze_densenet(self, unfreeze_blocks: int) -> None:
 
-        https://discuss.pytorch.org/t/how-the-pytorch-freeze-network-in-some-layers-only-the-rest-of-the-training/7088/2
-        https://stackoverflow.com/questions/69278507/unfreeze-model-layer-by-layer-in-pytorch
-        https://python.plainenglish.io/how-to-freeze-model-weights-in-pytorch-for-transfer-learning-step-by-step-tutorial-a533a58051ef
-        https://stackoverflow.com/questions/62523912/freeze-certain-layers-of-an-existing-model-in-pytorch
+        # Freeze all layers to start
+        for param in self.pretrained.features.parameters():
+            param.requires_grad = False
 
-        Suggested online
-        # This is for a Graph Neural Network based on the GIN paper
-        _FREEZE_KEY = {'0': ['ginlayers.0','linears_prediction_classification.0'],
-               '1': ['ginlayers.1','linears_prediction_classification.1'],
-               '2': ['ginlayers.2','linears_prediction_classification.2'],
-               '3': ['ginlayers.3','linears_prediction_classification.3'],
-               '4': ['ginlayers.4','linears_prediction_classification.4'],
-               }
-        def freeze_model_weights(model, freeze_key_id="0"):
-   
-            print('Going to apply weight frozen')
-            print('before frozen, require grad parameter names:')
-            for name, param in model.named_parameters():
-                if param.requires_grad:print(name)
-            freeze_keys = _FREEZE_KEY[freeze_key_id]
-            print('freeze_keys', freeze_keys)
-            for name, para in model.named_parameters():
-                if para.requires_grad and any(key in name for key in freeze_keys):
-                    para.requires_grad = False
-            print('after frozen, require grad parameter names:')
-            for name, para in model.named_parameters():
-                if para.requires_grad:print(name)
-            return model
+        if unfreeze_blocks == 3:
+            for param in self.pretrained.features.denseblock4.paramaters():
+                param.requires_grad = True
+            for param in self.pretrained.features.denseblock3.paramaters():
+                param.requires_grad = True
+            for param in self.pretrained.features.denseblock2.paramaters():
+                param.requires_grad = True
+        elif unfreeze_blocks == 2:
+            for param in self.pretrained.features.denseblock4.paramaters():
+                param.requires_grad = True
+            for param in self.pretrained.features.denseblock3.paramaters():
+                param.requires_grad = True
+        elif unfreeze_blocks == 1:
+            for param in self.pretrained.features.denseblock4.paramaters():
+                param.requires_grad = True
+            
+    def _freeze_vgg(self, num_blocks: int) -> None:
 
-        model = freeze_model_weights(model, freeze_key_id = "0")
-        non_frozen_parameters = [p for p in net.parameters() if p.requires_grad]
-        optimizer = optim.Adam(non_frozen_parameters, lr=0.001)
-        
-        """
-        pass
+        # Freeze all layers to start
+        for param in self.pretrained.features.parameters():
+            param.requires_grad = False
+
+    def _freeze_inception3(self, num_blocks: int) -> None:
+
+        # Freeze all layers. Note: Inception does not have features
+        self.pretrained = nn.Sequential(*[i for i in list(self.pretrained.children())[:-1]])
+        for child  in self.pretrained.children():
+            for param in child.parameters():
+                param.requires_grad = False
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         output = self.block1(data)
@@ -116,7 +110,7 @@ class PulsarModel(nn.Module):
         :param freq_module: A pre-trained nn.Module for frequency processing
         :param dm_module: A pre-trained nn.Module for dm processing
         :param k: This is the k training hyperparamter
-                referred to in the original FETCH paper
+                  referred to in the original FETCH paper
         """
         super().__init__()
     

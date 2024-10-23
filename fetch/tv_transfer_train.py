@@ -242,35 +242,38 @@ def main():
     best_model_path = ""
     best_vloss = float('inf')
 
-    # Setup model
-    model = TorchvisionModel(args.model, out_features=1).to(DEVICE)
+    for unfrozen in range(4):
+        print(f"Training model with {unfrozen} unfrozen blocks", flush=True)
 
-    # Setup training parameters
-    loss_fn = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=args.learning_rate)
+        # Setup model
+        model = TorchvisionModel(args.model, out_features=1, unfrozen).to(DEVICE)
 
-    # Start of training/validation
-    epochs_without_improvement = 0
+        # Setup training parameters
+        loss_fn = nn.BCEWithLogitsLoss()
+        optimizer = torch.optim.Adam(params=model.parameters(), lr=args.learning_rate)
 
-    for t in range(args.epochs):
-        print(f"Epoch {t+1}\n-------------------------------", flush=True)
+        # Start of training/validation
+        epochs_without_improvement = 0
 
-        # Train the model
-        train_loop(tr_dataloader, model, args.data, loss_fn, optimizer, args.batch_size)
+        for t in range(args.epochs):
+            print(f"Epoch {t+1}\n-------------------------------", flush=True)
 
-        # Validate the model and track best model perfomance
-        avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.probability)
-        if avg_vloss < best_vloss:
-            best_vloss = avg_vloss
-            best_model_path = f"model_{args.model}_{args.data}_epoch{t+1}.pth"
-            torch.save(model.state_dict(), best_model_path)
-            epochs_without_improvement = 0
-        else:
-            epochs_without_improvement += 1
+            # Train the model
+            train_loop(tr_dataloader, model, args.data, loss_fn, optimizer, args.batch_size)
 
-        if epochs_without_improvement >= args.patience:
-            print("Stopping training early")
-            break
+            # Validate the model and track best model perfomance
+            avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.probability)
+            if avg_vloss < best_vloss:
+                best_vloss = avg_vloss
+                best_model_path = f"model_{unfrozen}_{args.model}_{args.data}_epoch{t+1}.pth"
+                torch.save(model.state_dict(), best_model_path)
+                epochs_without_improvement = 0
+            else:
+                epochs_without_improvement += 1
+
+            if epochs_without_improvement >= args.patience:
+                print(f"Stopping training early", flush=True)
+                break
 
     # Save the final best model based on train/validation to output dir
     outfile = f"{args.output_path}/{best_model_path}"
