@@ -246,7 +246,7 @@ def main():
         print(f"Training model with {unfrozen} unfrozen blocks", flush=True)
 
         # Setup model
-        model = TorchvisionModel(args.model, out_features=1, unfrozen).to(DEVICE)
+        model = TorchvisionModel(args.model, 1, unfrozen).to(DEVICE)
 
         # Setup training parameters
         loss_fn = nn.BCEWithLogitsLoss()
@@ -282,7 +282,7 @@ def main():
     # Test model
     tst_dataloader = None
     if args.test_data_dir is not None:
-        model = TorchvisionModel(args.model, out_features=1)
+        model = TorchvisionModel(args.model, 1)
         model.load_state_dict(torch.load(best_model_path, weights_only=True))
         model.to(DEVICE)
     
