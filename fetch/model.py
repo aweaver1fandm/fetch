@@ -62,8 +62,13 @@ class TorchvisionModel(nn.Module):
     def _freeze_densenet(self, unfreeze_blocks: int) -> None:
 
         # Freeze all layers to start
-        for param in self.pretrained.features.parameters():
-            param.requires_grad = False
+        #for param in self.pretrained.features.parameters():
+        #    param.requires_grad = False
+
+        self.pretrained = nn.Sequential(*[i for i in list(self.pretrained.children())[:-1]])
+        for child  in self.pretrained.children():
+            for param in child.parameters():
+                param.requires_grad = False
 
         if unfreeze_blocks == 3:
             for param in self.pretrained.features.denseblock4.paramaters():
