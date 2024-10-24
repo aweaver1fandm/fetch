@@ -242,8 +242,40 @@ def main():
     best_model_path = ""
     best_vloss = float('inf')
 
+    printf(f"**** Initial training with all layers frozen ****", flush=True)
+    epochs _without_improvement = 0
+
+    # Setup model
+    model = TorchvisionModel(args.model, 1, 0).to(DEVICE)
+
+    # Setup training parameters
+    loss_fn = nn.BCEWithLogitsLoss()
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=args.learning_rate)
+
+    for t in range(args.epochs):
+        print(f"Epoch {t+1}\n-------------------------------", flush=True)
+
+        # Train the model
+        train_loop(tr_dataloader, model, args.data, loss_fn, optimizer, args.batch_size)
+
+        # Validate the model and track best model perfomance
+        avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.probability)
+        if avg_vloss < best_vloss:
+            best_vloss = avg_vloss
+            best_model_path = f"model_{0}_{args.model}_{args.data}_epoch{t+1}.pth"
+            torch.save(model.state_dict(), best_model_path)
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+
+        if epochs_without_improvement >= args.patience:
+            print(f"Stopping training early", flush=True)
+            break
+
+
     for unfrozen in range(4):
         print(f"Training model with {unfrozen} unfrozen blocks", flush=True)
+
 
         # Setup model
         model = TorchvisionModel(args.model, 1, unfrozen).to(DEVICE)

@@ -18,7 +18,7 @@ class TorchvisionModel(nn.Module):
              "VGG19": 512,
              "Inception_V3": 2048,
     }   
-    def __init__(self, model_name: str, out_features: int, unfreeze_blocks: int = 0) -> None:
+    def __init__(self, model_name: str, out_features: int, unfreeze_layers: int = 0) -> None:
         r"""
         
         Creates a processing block containing a pre-trained torchvision
@@ -28,7 +28,7 @@ class TorchvisionModel(nn.Module):
         :param out_features: Number of output features for classifier 
                              This is the k training hyperparamter
                              referred to in the original FETCH paper
-        :param unfreeze_blocks: Number of feature blocks to unfreeze
+        :param unfreeze_layers: Number of layers to unfreeze
         """
         super().__init__()
         
@@ -47,56 +47,67 @@ class TorchvisionModel(nn.Module):
         # Get the pre-trained model from PyTorch
         self.model = torch.hub.load("pytorch/vision", model_name.lower(), weights=weights)
 
+        # Freeze all layers to start
+        for param in self.model.parameters():
+            param.requires_grad = False
+
         if self.model_name.startswith("DenseNet"):
-            self._freeze_densenet(unfreeze_blocks)
+            self._freeze_densenet(unfreeze_layers)
         
         # Replace/set the classifier layer
-        # With a denselayer ??? look at paper
         self.model.classifier = nn.Sequential(
-            #nn.AdaptiveMaxPool2d(output_size=1),
-            #nn.BatchNorm2d(num_features=features, eps=0.001, momentum=0.99),
-            ##nn.Dropout(p=0.3),
-            #nn.Flatten(start_dim=1),
             nn.Linear(in_features=features, out_features=out_features),
             nn.Dropout(p=0.3),
         )
 
-    def _freeze_densenet(self, unfreeze_blocks: int) -> None:
+    def _unfreeze_densenet(self, unfreeze_layers: int) -> None:
+        """
+        Go through each dense layer in each dense block and enable
+        gradients until we hit the layer count or run out of layers
+        """
 
-        # Freeze all layers to start
-        #for param in self.pretrained.features.parameters():
-        for param in self.model.parameters():
-            param.requires_grad = False
+        if unfreeze_layers == 0:
+            return
 
-        if unfreeze_blocks == 3:
-            for param in self.model.features.denseblock4.parameters():
+        count = 0
+
+        for layer in reversed(list(model.features.denseblock4.children())):
+            count += 1
+            for param in layer.parameters():
                 param.requires_grad = True
-            for param in self.model.features.denseblock3.parameters():
+
+            if count == unfreeze layers:
+                return
+
+        for layer in reversed(list(model.features.denseblock3.children())):
+            count += 1
+            for param in layer.parameters():
                 param.requires_grad = True
-            for param in self.model.features.denseblock2.parameters():
+
+            if count == unfreeze layers:
+                return
+
+        for layer in reversed(list(model.features.denseblock2.children())):
+            count += 1
+            for param in layer.parameters():
                 param.requires_grad = True
-        elif unfreeze_blocks == 2:
-            for param in self.model.features.denseblock4.parameters():
+
+            if count == unfreeze layers:
+                return
+
+        for layer in reversed(list(model.features.denseblock1.children())):
+            count += 1
+            for param in layer.parameters():
                 param.requires_grad = True
-            for param in self.model.features.denseblock3.parameters():
-                param.requires_grad = True
-        elif unfreeze_blocks == 1:
-            for param in self.model.features.denseblock4.parameters():
-                param.requires_grad = True
+
+            if count == unfreeze layers:
+                return
             
-    def _freeze_vgg(self, num_blocks: int) -> None:
+    def _unfreeze_vgg(self, num_blocks: int) -> None:
+        pass
 
-        # Freeze all layers to start
-        for param in self.model.features.parameters():
-            param.requires_grad = False
-
-    def _freeze_inception3(self, num_blocks: int) -> None:
-
-        # Freeze all layers. Note: Inception does not have features
-        self.model = nn.Sequential(*[i for i in list(self.pretrained.children())[:-1]])
-        for child  in self.pretrained.children():
-            for param in child.parameters():
-                param.requires_grad = False
+    def _unfreeze_inception3(self, num_blocks: int) -> None:
+        pass
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         output = self.block1(data)
