@@ -243,7 +243,7 @@ def main():
     best_vloss = float('inf')
 
     printf(f"**** Initial training with all layers frozen ****", flush=True)
-    epochs _without_improvement = 0
+    epochs_without_improvement = 0
 
     # Setup model
     model = TorchvisionModel(args.model, 1, 0).to(DEVICE)
