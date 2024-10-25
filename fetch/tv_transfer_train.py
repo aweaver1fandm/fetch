@@ -242,7 +242,7 @@ def main():
     best_model_path = ""
     best_vloss = float('inf')
 
-    printf(f"**** Initial training with all layers frozen ****", flush=True)
+    print(f"**** Initial training with all layers frozen ****", flush=True)
     epochs_without_improvement = 0
 
     # Setup model
