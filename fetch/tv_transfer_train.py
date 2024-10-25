@@ -310,6 +310,8 @@ def main():
             else:
                 epochs_without_improvement += 1
 
+            print(f"Epoch without improvement count {epochs_without_improvement}", flush=True)
+
             # As I understsand the training procedure in the paper
             # Essentially need to go 3 consecutive unfrozen layers
             # with no improvement in validation loss.
@@ -317,7 +319,7 @@ def main():
             # in first 3 epochs for each layer
             if epochs_without_improvement >= args.patience:
                 # Possibly increase consec layers without improvement
-                if (t+1) == 3:
+                if t == 3:
                     consec_layers += 1
                 print(f"Stopping training early", flush=True)
                 break
