@@ -272,13 +272,19 @@ def main():
             print(f"Stopping training early", flush=True)
             break
 
+    # Number of unfrozen layers
+    n = 0 
 
-    for unfrozen in range(4):
-        print(f"Training model with {unfrozen} unfrozen blocks", flush=True)
+    # Number of consecutive layers unfrozen without improvement
+    consec_layers = 0 
 
+    while consec_layers < 3:
+        # Increment unfrozen count
+        n += 1
+        print(f"**** Training model with {n} unfrozen layers ****", flush=True)
 
         # Setup model
-        model = TorchvisionModel(args.model, 1, unfrozen).to(DEVICE)
+        model = TorchvisionModel(args.model, 1, n).to(DEVICE)
 
         # Setup training parameters
         loss_fn = nn.BCEWithLogitsLoss()
@@ -297,13 +303,22 @@ def main():
             avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.probability)
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
-                best_model_path = f"model_{unfrozen}_{args.model}_{args.data}_epoch{t+1}.pth"
+                best_model_path = f"model_{n}_{args.model}_{args.data}_epoch{t+1}.pth"
                 torch.save(model.state_dict(), best_model_path)
                 epochs_without_improvement = 0
+                consec_layers = 0
             else:
                 epochs_without_improvement += 1
 
+            # As I understsand the training procedure in the paper
+            # Essentially need to go 3 consecutive unfrozen layers
+            # with no improvement in validation loss.
+            # Specifically three consecutive layers where no improvement
+            # in first 3 epochs for each layer
             if epochs_without_improvement >= args.patience:
+                # Possibly increase consec layers without improvement
+                if (t+1) == 3:
+                    consec_layers += 1
                 print(f"Stopping training early", flush=True)
                 break
 
@@ -314,7 +329,7 @@ def main():
     # Test model
     tst_dataloader = None
     if args.test_data_dir is not None:
-        model = TorchvisionModel(args.model, 1)
+        model = TorchvisionModel(args.model, 1, 0)
         model.load_state_dict(torch.load(best_model_path, weights_only=True))
         model.to(DEVICE)
     
