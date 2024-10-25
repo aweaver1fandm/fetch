@@ -76,7 +76,7 @@ class TorchvisionModel(nn.Module):
             for param in layer.parameters():
                 param.requires_grad = True
 
-            if count == unfreeze layers:
+            if count == unfreeze_layers:
                 return
 
         for layer in reversed(list(model.features.denseblock3.children())):
@@ -84,7 +84,7 @@ class TorchvisionModel(nn.Module):
             for param in layer.parameters():
                 param.requires_grad = True
 
-            if count == unfreeze layers:
+            if count == unfreeze_layers:
                 return
 
         for layer in reversed(list(model.features.denseblock2.children())):
@@ -92,7 +92,7 @@ class TorchvisionModel(nn.Module):
             for param in layer.parameters():
                 param.requires_grad = True
 
-            if count == unfreeze layers:
+            if count == unfreeze_layers:
                 return
 
         for layer in reversed(list(model.features.denseblock1.children())):
@@ -100,7 +100,7 @@ class TorchvisionModel(nn.Module):
             for param in layer.parameters():
                 param.requires_grad = True
 
-            if count == unfreeze layers:
+            if count == unfreeze_layers:
                 return
             
     def _unfreeze_vgg(self, num_blocks: int) -> None:
