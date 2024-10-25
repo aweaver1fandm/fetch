@@ -268,6 +268,7 @@ def main():
         else:
             epochs_without_improvement += 1
 
+        print(f"Epoch without improvement count {epochs_without_improvement}", flush=True)
         if epochs_without_improvement >= args.patience:
             print(f"Stopping training early", flush=True)
             break
@@ -311,6 +312,7 @@ def main():
                 epochs_without_improvement += 1
 
             print(f"Epoch without improvement count {epochs_without_improvement}", flush=True)
+            print(f"Value of consec_layers: {consec_layers}", flush=True)
 
             # As I understsand the training procedure in the paper
             # Essentially need to go 3 consecutive unfrozen layers
