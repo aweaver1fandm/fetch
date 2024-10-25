@@ -52,7 +52,7 @@ class TorchvisionModel(nn.Module):
             param.requires_grad = False
 
         if self.model_name.startswith("DenseNet"):
-            self._freeze_densenet(unfreeze_layers)
+            self._unfreeze_densenet(unfreeze_layers)
         
         # Replace/set the classifier layer
         self.model.classifier = nn.Sequential(
