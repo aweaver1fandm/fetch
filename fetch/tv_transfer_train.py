@@ -321,7 +321,7 @@ def main():
             # in first 3 epochs for each layer
             if epochs_without_improvement >= args.patience:
                 # Possibly increase consec layers without improvement
-                if t == 3:
+                if t == 2:
                     consec_layers += 1
                 print(f"Stopping training early", flush=True)
                 break
