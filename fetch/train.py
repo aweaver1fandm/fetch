@@ -216,6 +216,7 @@ def main():
         # Loading the saved individual models with strict=false 
         # Ensures that model will load and populate with trained weights
         # even though classifier block was originally trained with outfeatures=1
+        '''
         freq_model_path = f"model_weights/{args.freq_model}_freq.pth"
         freq_model = TorchvisionModel(args.freq_model, out_features=k)
         state_dict = torch.load(freq_model_path, weights_only=True)
@@ -226,7 +227,10 @@ def main():
         dm_model = TorchvisionModel(args.dm_model, out_features=k)
         state_dict = torch.load(dm_model_path, weights_only=True)
         new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("pretrained.classifier")}
-        dm_model.load_state_dict(new_state_dict, strict=False)
+        dm_model.load_state_dict(new_state_dict, strict=False)'''
+        
+        freq_model = TorchvisionModel(args.freq_model, k, 0)
+        dm_model = TorchvisionModel(args.dm_model, k, 0)
 
         # Setup combined model
         model = PulsarModel(freq_model, dm_model, k).to(DEVICE)
@@ -267,6 +271,7 @@ def main():
     # Test model
     tst_dataloader = None
     if args.test_data_dir is not None:
+        '''
         freq_model_path = f"model_weights/{args.freq_model}_freq.pth"
         freq_model = TorchvisionModel(args.freq_model, out_features=best_k)
         state_dict = torch.load(freq_model_path, weights_only=True)
@@ -277,9 +282,11 @@ def main():
         dm_model = TorchvisionModel(args.dm_model, out_features=best_k)
         state_dict = torch.load(dm_model_path, weights_only=True)
         new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("pretrained.classifier")}
-        dm_model.load_state_dict(new_state_dict, strict=False)
+        dm_model.load_state_dict(new_state_dict, strict=False)'''
 
         # Setup model
+        freq_model = TorchvisionModel(args.freq_model, best_k, 0)
+        dm_model = TorchvisionModel(args.dm_model, best_k, 0)
         model = PulsarModel(freq_model, dm_model, best_k)
         model.load_state_dict(torch.load(best_model_path, weights_only=True))
         model.to(DEVICE)
