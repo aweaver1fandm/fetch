@@ -115,12 +115,6 @@ class TorchvisionModel(nn.Module):
     def _unfreeze_vgg(self, num_blocks: int) -> None:
         # Replace/set the classifier layer
         self.model.classifier = nn.Sequential(
-            nn.Linear(self.out_features, 4096),
-            nn.ReLU(True),
-            nn.Dropout(p=0.3),
-            nn.Linear(self.features, self.features),
-            nn.ReLU(True),
-            nn.Dropout(p=0.3),
             nn.Linear(in_features=self.features, out_features=self.out_features),
             nn.Dropout(p=0.3),
         )
