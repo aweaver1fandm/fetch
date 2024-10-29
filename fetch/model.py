@@ -36,7 +36,8 @@ class TorchvisionModel(nn.Module):
 
         self.model_name = model_name
         weights = f"{model_name}_Weights.DEFAULT"
-        features = self.PARAMS[model_name]
+        self.features = self.PARAMS[model_name]
+        self.out_features = out_features
 
         # Make input data compatible with pre-trained network
         self.block1= nn.Sequential(
@@ -53,18 +54,26 @@ class TorchvisionModel(nn.Module):
 
         if self.model_name.startswith("DenseNet"):
             self._unfreeze_densenet(unfreeze_layers)
+        elif self.model_name.startswith("VGG"):
+            self._unfreeze_vgg(unfreeze_layers)
         
         # Replace/set the classifier layer
-        self.model.classifier = nn.Sequential(
+        '''self.model.classifier = nn.Sequential(
             nn.Linear(in_features=features, out_features=out_features),
             nn.Dropout(p=0.3),
-        )
+        )'''
 
     def _unfreeze_densenet(self, unfreeze_layers: int) -> None:
         """
         Go through each dense layer in each dense block and enable
         gradients until we hit the layer count or run out of layers
         """
+
+        # Replace/set the classifier layer
+        self.model.classifier = nn.Sequential(
+            nn.Linear(in_features=self.features, out_features=self.out_features),
+            nn.Dropout(p=0.3),
+        )
 
         if unfreeze_layers == 0:
             return
@@ -104,7 +113,17 @@ class TorchvisionModel(nn.Module):
                 return
             
     def _unfreeze_vgg(self, num_blocks: int) -> None:
-        pass
+        # Replace/set the classifier layer
+        self.model.classifier = nn.Sequential(
+            nn.Linear(self.out_features, 4096),
+            nn.ReLU(True),
+            nn.Dropout(p=0.3),
+            nn.Linear(self.features, self.features),
+            nn.ReLU(True),
+            nn.Dropout(p=0.3),
+            nn.Linear(in_features=self.features, out_features=self.out_features),
+            nn.Dropout(p=0.3),
+        )
 
     def _unfreeze_inception3(self, num_blocks: int) -> None:
         pass
