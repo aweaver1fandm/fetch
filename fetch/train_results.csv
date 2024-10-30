@@ -1,0 +1,11 @@
+model,data,train_pos,train_neg,valid_pos,valid_neg,best_loss,recall,precision,F1,unfrozen,,Test data
+Densenet121,freq,16980,17020,3020,2980,,,,,,,Total observations: 13983
+DenseNet169,freq,,,,,,,,,,,Total pulsars: 6664
+DenseNet201,freq,17031,16969,2969,3031,,,,,,,Total non-pulsars: 7319
+Densenet121,dm,,,,,,,,,,,
+DenseNet169,dm,,,,,,,,,,,
+DenseNet201,dm,,,,,,,,,,,
+VGG16,freq,,,,,,,,,,,
+VGG19,freq,,,,,,,,,,,
+VGG16,dm,,,,,,,,,,,
+VGG19,dm,,,,,,,,,,,
