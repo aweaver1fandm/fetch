@@ -13,6 +13,19 @@ from torch.utils.data import DataLoader
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
+def printObsCounts(dataset) -> None:
+    pos_count = 0
+    neg_count = 0
+    for freq, dm, label in dataset:
+        if label == 1:
+            pos_count += 1
+        else:
+            neg_count += 1
+        
+    print(f"Total observations: {len(dataset)}", flush=True)
+    print(f"Total pulsars: {pos_count}", flush=True)
+    print(f"Total non-pulsars: {neg_count}", flush=True)
+
 class PulsarData(Dataset):
     def __init__(
         self,
@@ -73,11 +86,6 @@ class PulsarData(Dataset):
         dt_data = np.reshape(dt_data, (self.n_channels, *self.dt_dim))
 
         return ft_data, dt_data, self.labels[index]
-
-    def printObsCounts(self) -> None:
-        print(f"Total observations: {self.labels.size}", flush=True)
-        print(f"Total pulsars: {(self.labels == 1).sum()}", flush=True)
-        print(f"Total non-pulsars: {(self.labels == 0).sum()}", flush=True)
         
     def _data_from_h5(self, file: str) -> None:
         r"""

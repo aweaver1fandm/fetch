@@ -16,7 +16,7 @@ from torchvision import datasets
 
 from torcheval.metrics.functional import binary_precision, binary_recall, binary_f1_score
 
-from fetch.pulsar_data import PulsarData
+from fetch.pulsar_data import PulsarData, printObsCounts
 from fetch.model import TorchvisionModel
 
 # Use GPU if available
@@ -237,10 +237,10 @@ def main():
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
 
     print(f"\n\n--- Observation counts for training data ---", flush=True)
-    train_data.dataset.printObsCounts()
+    printObsCounts(train_data)
     
     print(f"\n\n--- Observation counts for validation data ---", flush=True)
-    validate_data.dataset.printObsCounts()
+    printObsCounts(validate_data)
 
     tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
     v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
@@ -347,7 +347,7 @@ def main():
         test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
         test_data = PulsarData(files=test_data_files)
         print(f"--- Observation counts for test data ---", flush=True)
-        test_data.printObsCounts()
+        printObsCounts(test_data)
         tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
         
         test(tst_dataloader, model, args.data, args.probability)
