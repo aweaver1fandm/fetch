@@ -237,10 +237,10 @@ def main():
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
 
     print(f"\n\n--- Observation counts for training data ---", flush=True)
-    train_data.printObsCounts()
+    train_data.dataset.printObsCounts()
     
     print(f"\n\n--- Observation counts for validation data ---", flush=True)
-    validate_data.printObsCounts()
+    validate_data.dataset.printObsCounts()
 
     tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
     v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
