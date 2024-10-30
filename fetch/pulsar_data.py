@@ -73,6 +73,11 @@ class PulsarData(Dataset):
         dt_data = np.reshape(dt_data, (self.n_channels, *self.dt_dim))
 
         return ft_data, dt_data, self.labels[index]
+
+    def printObsCounts(self) -> None:
+        print(f"Total observations: {self.labels.size}", flush=True)
+        print(f"Total pulsars: {(self.labels == 1).sum()}", flush=True)
+        print(f"Total non-pulsars: {(self.labels == 0).sum()}", flush=True)
         
     def _data_from_h5(self, file: str) -> None:
         r"""

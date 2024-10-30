@@ -236,6 +236,12 @@ def main():
     train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
 
+    print(f"\n\n--- Observation counts for training data ---", flush=True)
+    train_data.printObsCounts()
+    
+    print(f"\n\n--- Observation counts for validation data ---", flush=True)
+    validate_data.printObsCounts()
+
     tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
     v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
 
@@ -340,6 +346,8 @@ def main():
         print(f"Loading test data.  This may take some time...", flush=True)
         test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
         test_data = PulsarData(files=test_data_files)
+        print(f"--- Observation counts for test data ---", flush=True)
+        test_data.printObsCounts()
         tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
         
         test(tst_dataloader, model, args.data, args.probability)
