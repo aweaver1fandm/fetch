@@ -170,7 +170,7 @@ def test(dataloader: DataLoader, model: nn.Module, data: str, prob: float) -> No
         print(f"\tF1: {(100*f1):.2f}%", flush=True)
     # new code ends here
         
-            '''
+    '''
             # Original test calculations
             predicted = (pred >= prob).float()
             predictions.extend(predicted.to('cpu').numpy())
