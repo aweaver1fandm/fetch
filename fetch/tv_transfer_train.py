@@ -8,6 +8,7 @@ import os
 import string
 import glob
 import sys
+import numpy as np
 
 import torch
 from torch import nn
