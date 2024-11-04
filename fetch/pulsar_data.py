@@ -22,9 +22,9 @@ def printObsCounts(dataset) -> None:
         else:
             neg_count += 1
         
-    print(f"Total observations: {len(dataset)}", flush=True)
-    print(f"Total pulsars: {pos_count}", flush=True)
-    print(f"Total non-pulsars: {neg_count}", flush=True)
+    print(f"\tTotal observations: {len(dataset)}", flush=True)
+    print(f"\tTotal pulsars: {pos_count}", flush=True)
+    print(f"\tTotal non-pulsars: {neg_count}", flush=True)
 
 class PulsarData(Dataset):
     def __init__(

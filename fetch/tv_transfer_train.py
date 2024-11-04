@@ -155,9 +155,10 @@ def test(dataloader: DataLoader, model: nn.Module, data: str, prob: float) -> No
             predictions.extend(pred.to('cpu').numpy())
             truth.extend(labels.to('cpu').numpy())
 
+    pred_np_arr = np.array(predictions)
     thresholds = [0.3, 0.4, 0.5, 0.6, 0.7]
     for threshold in thresholds:
-        binary_pred = (predictions >= threshold).float()
+        binary_pred = (pred_np_arr >= threshold).float()
         pred_tensor = torch.tensor(binary_pred)
         truth_tensor = torch.tensor(truth)
         recall = binary_recall(pred_tensor, truth_tensor)
@@ -256,17 +257,12 @@ def main():
     train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
 
-    print(f"\n\n--- Observation counts for training data ---", flush=True)
-    printObsCounts(train_data)
-    
-    print(f"\n\n--- Observation counts for validation data ---", flush=True)
-    printObsCounts(validate_data)
-
     tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
     v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
 
     best_model_path = ""
     best_vloss = float('inf')
+    best_unfrozen = 0
 
     print(f"**** Initial training with all layers frozen ****", flush=True)
     epochs_without_improvement = 0
@@ -330,6 +326,7 @@ def main():
             avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.probability)
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
+                best_unfrozen = n
                 best_model_path = f"model_{n}_{args.model}_{args.data}_epoch{t+1}.pth"
                 torch.save(model.state_dict(), best_model_path)
                 epochs_without_improvement = 0
@@ -351,6 +348,14 @@ def main():
                     consec_layers += 1
                 print(f"Stopping training early", flush=True)
                 break
+
+    print(f"\n--- TRAINING SUMMARY ---", flush=True)
+    print(f"\t--- Observation counts for training data ---", flush=True)
+    printObsCounts(train_data)
+    print(f"\t--- Observation counts for validation data ---", flush=True)
+    printObsCounts(validate_data)
+    print(f"\tBest validation loss: {best_vloss}", flush=True)
+    print(f"\tUnfrozen layers with best validation loss: {best_unfrozen}\n\n", flush = True)
 
     # Save the final best model based on train/validation to output dir
     outfile = f"{args.output_path}/{best_model_path}"
