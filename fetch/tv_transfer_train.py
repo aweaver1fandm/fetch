@@ -159,7 +159,7 @@ def test(dataloader: DataLoader, model: nn.Module, data: str, prob: float) -> No
     pred_np_arr = np.array(predictions)
     thresholds = [0.3, 0.4, 0.5, 0.6, 0.7]
     for threshold in thresholds:
-        binary_pred = (pred_np_arr >= threshold).float()
+        binary_pred = (pred_np_arr >= threshold)
         pred_tensor = torch.tensor(binary_pred)
         truth_tensor = torch.tensor(truth)
         recall = binary_recall(pred_tensor, truth_tensor)
