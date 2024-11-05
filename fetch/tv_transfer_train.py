@@ -50,8 +50,8 @@ def train_loop(dataloader: DataLoader,
 
         # Add some noise to freq data to help avoid overtraining
         if data == "freq":
-            # noise = torch.randn_like(freq_data) * .1
-            # freq_data = freq_data + noise
+            noise = torch.randn_like(freq_data) * .1
+            freq_data = freq_data + noise
             freq_data = freq_data.to(DEVICE)
             pred = model(freq_data)
         elif data == "dm":
