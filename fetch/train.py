@@ -121,7 +121,6 @@ def test(dataloader: DataLoader, model: nn.Module, prob: float) -> None:
             dm_data = dm_data.to(DEVICE)
             pred = model(freq_data, dm_data)
 
-            # New code starts here
             predictions.extend(pred.to('cpu').numpy())
             truth.extend(labels.to('cpu').numpy())
 
@@ -139,23 +138,6 @@ def test(dataloader: DataLoader, model: nn.Module, prob: float) -> None:
         print(f"\tRecall: {(100*recall):.2f}%", flush=True)
         print(f"\tPrecision: {(100*precision):.2f}%", flush=True)
         print(f"\tF1: {(100*f1):.2f}%", flush=True)
-    # new code ends here
-
-    '''
-            predicted = (pred >= prob).float()
-            predictions.extend(predicted.to('cpu').numpy())
-            truth.extend(labels.to('cpu').numpy())
-            
-    pred_tensor = torch.tensor(predictions)
-    truth_tensor = torch.tensor(truth)
-    recall = binary_recall(pred_tensor, truth_tensor)
-    precision = binary_precision(pred_tensor, truth_tensor)
-    f1 = binary_f1_score(pred_tensor, truth_tensor)
-
-    print(f"--- Test results ---", flush=True)
-    print(f"\tRecall: {(100*recall):.2f}%", flush=True)
-    print(f"\tPrecision: {(100*precision):.2f}%", flush=True)
-    print(f"\tF1: {(100*f1):.2f}%", flush=True)'''
 
 def main():
     parser = argparse.ArgumentParser(
