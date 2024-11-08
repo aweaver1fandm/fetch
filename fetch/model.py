@@ -125,7 +125,7 @@ class TorchvisionModel(nn.Module):
         # if not training and output features is 1 (i.e., binary classification)
         # During training sigmoid is applied via loss function
         if self.out_features == 1 and not(self.model.training):
-            return nn.functional.sigmoid(output)
+            output = nn.functional.sigmoid(output)
 
         return output.squeeze()
 
