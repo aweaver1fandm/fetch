@@ -34,8 +34,9 @@ classifiers = [
 
 [project.scripts]
 train = "fetch.train:main"
-tv_transfer_train = "fetch.tv_transfer_train:main"
+transfer_train = "fetch.transfer_train:main"
 predict = "fetch.predict:main"
+predict_single = "fetch.predict_single:main"
 
 [tool.setuptools.packages.find]
 include = ["fetch*"]
