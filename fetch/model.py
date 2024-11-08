@@ -120,7 +120,6 @@ class TorchvisionModel(nn.Module):
         output = self.block1(data)
         output = self.model(output)
 
-
         # For singular model need to apply sigmoid function
         # if not training and output features is 1 (i.e., binary classification)
         # During training sigmoid is applied via loss function
