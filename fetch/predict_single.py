@@ -98,8 +98,8 @@ def main():
                 predicted = model(dm_data)
                
             predicted = predicted.to('cpu').numpy()
-            probs.extend(predicted[:, 1])
-            predictions.extend(np.round(predicted[:, 1] >= args.probability))           
+            probs.extend(predicted)
+            predictions.extend(np.round(predicted >= args.probability))           
 
     # Save the results
     print(f"Saving final results")
