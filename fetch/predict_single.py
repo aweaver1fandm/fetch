@@ -77,7 +77,7 @@ def main():
     inputs = PulsarData(files=cands_to_eval)
     dataloader = DataLoader(inputs, batch_size=args.batch_size, shuffle=False)
 
-    print(f"Making predictions")
+    print(f"Making predictions...", flush=True)
     # Make predictions in batches
     predictions = []
     probs = []
@@ -90,10 +90,10 @@ def main():
             labels = labels.to(DEVICE)
 
             # Load data to device and make predictions
-            if data == "freq":
+            if args.data == "freq":
                 freq_data = freq_data.to(DEVICE)
                 predicted = model(freq_data)
-            elif data == "dm":
+            elif args.data == "dm":
                 dm_data = dm_data.to(DEVICE)
                 predicted = model(dm_data)
                
