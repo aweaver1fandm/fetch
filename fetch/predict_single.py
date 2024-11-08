@@ -63,7 +63,7 @@ def main():
     model.to(DEVICE)
     
     cands_to_eval = []
-    print(f"Processing input data ", flush=true)
+    print(f"Processing input data ", flush=True)
     for data_dir in args.data_dir:
 
         # Get all our candidate files
