@@ -62,19 +62,20 @@ def main():
     model.eval()
     model.to(DEVICE)
     
+    cands_to_eval = []
     print(f"Processing input data ", flush=true)
     for data_dir in args.data_dir:
 
         # Get all our candidate files
-        cands_to_eval = glob.glob(f"{data_dir}/*h*5")
+        cands_to_eval += glob.glob(f"{data_dir}/*h*5")
 
         if len(cands_to_eval) == 0:
             print(f"No candidates to evaluate in directory: {data_dir}", flush=True)
             continue
 
-        # Setup the candidate data
-        inputs = PulsarData(files=cands_to_eval)
-        dataloader = DataLoader(inputs, batch_size=args.batch_size shuffle=False)
+    # Setup the candidate data
+    inputs = PulsarData(files=cands_to_eval)
+    dataloader = DataLoader(inputs, batch_size=args.batch_size, shuffle=False)
 
     print(f"Making predictions")
     # Make predictions in batches
