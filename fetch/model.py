@@ -168,7 +168,7 @@ class PulsarModel(nn.Module):
         # uses BinaryCrossEntropy loss with logits
         # which applies sigmoid as part of its calculations
         # So training has sigmoid but the model will need it when not training
-        if not(self.model.training):
+        if not(self.training):
             output = nn.functional.sigmoid(output)
 
         return output.squeeze()
