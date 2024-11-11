@@ -120,9 +120,11 @@ class TorchvisionModel(nn.Module):
         output = self.block1(data)
         output = self.model(output)
 
-        # For singular model need to apply sigmoid function
-        # if not training and output features is 1 (i.e., binary classification)
-        # During training sigmoid is applied via loss function
+        # Needed for validation/testing/predicting
+        # because transfer training of individual models
+        # uses BinaryCrossEntropy loss with logits
+        # which applies sigmoid as part of its calculations
+        # So training has sigmoid but the model will need it when not training
         if self.out_features == 1 and not(self.model.training):
             output = nn.functional.sigmoid(output)
 
@@ -151,7 +153,6 @@ class PulsarModel(nn.Module):
             nn.BatchNorm1d(num_features=k, eps=0.001, momentum=0.99),
             nn.ReLU(),
             nn.Linear(in_features=k, out_features=1),
-            nn.Sigmoid(),
         )
 
     def forward(self, freq_input: torch.Tensor, dm_input: torch.Tensor) -> torch.Tensor:
@@ -161,5 +162,13 @@ class PulsarModel(nn.Module):
         # Combine the outputs and produce final classification
         output = torch.mul(freq_output, dm_output)
         output = self.classifier(output)
+
+        # Needed for validation/testing/predicting
+        # because training of models
+        # uses BinaryCrossEntropy loss with logits
+        # which applies sigmoid as part of its calculations
+        # So training has sigmoid but the model will need it when not training
+        if not(self.model.training):
+            output = nn.functional.sigmoid(output)
 
         return output.squeeze()

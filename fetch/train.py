@@ -180,6 +180,12 @@ def main():
         "-dm", "--dm_model", help="DM data processing model", required=True, type=str
     )
     parser.add_argument(
+        "-uf", "--unfrozen_freq", help="Num layers to unfreeze in freq model", required=True, type=int
+    )
+    parser.add_argument(
+        "-ud", "--unfrozen_dm", help="Num layers to unfreeze in dm model", required=True, type=int
+    )
+    parser.add_argument(
         "-pa", "--patience", help="Num epochs with no improvement after which training will be stopped", default=3, type=int
     )
     parser.add_argument(
@@ -202,12 +208,6 @@ def main():
     train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
 
-    print(f"--- Observation counts for training data ---", flush=True)
-    train_data.printObsCounts()
-    
-    print(f"\n\n--- Observation counts for validation data ---", flush=True)
-    validate_data.printObsCounts()
-
     tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
     v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
     
@@ -220,25 +220,22 @@ def main():
 
     for k in k_hyperparameter:
         print(f"Training run for k={k}", flush=True)
-
-        # Loading the saved individual models with strict=false 
-        # Ensures that model will load and populate with trained weights
-        # even though classifier block was originally trained with outfeatures=1
-        '''
+        
+        # Load saved weights for freq model, ignoring classifier layer
+        # because we're replacing it with new layer with different num features
+        freq_model = TorchvisionModel(args.freq_model, k, args.unfrozen_freq)
         freq_model_path = f"model_weights/{args.freq_model}_freq.pth"
-        freq_model = TorchvisionModel(args.freq_model, out_features=k)
         state_dict = torch.load(freq_model_path, weights_only=True)
-        new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("pretrained.classifier")}
+        new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("model.classifier")}
         freq_model.load_state_dict(new_state_dict, strict=False)
 
+        # Load saved weights for freq model, ignoring classifier layer
+        # because we're replacing it with new layer with different num features
+        dm_model = TorchvisionModel(args.dm_model, k, args.unfrozen_dm)
         dm_model_path = f"model_weights/{args.dm_model}_dm.pth"
-        dm_model = TorchvisionModel(args.dm_model, out_features=k)
         state_dict = torch.load(dm_model_path, weights_only=True)
-        new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("pretrained.classifier")}
-        dm_model.load_state_dict(new_state_dict, strict=False)'''
-        
-        freq_model = TorchvisionModel(args.freq_model, k, 0)
-        dm_model = TorchvisionModel(args.dm_model, k, 0)
+        new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("model.classifier")}
+        dm_model.load_state_dict(new_state_dict, strict=False)
 
         # Setup combined model
         model = PulsarModel(freq_model, dm_model, k).to(DEVICE)
@@ -272,6 +269,14 @@ def main():
             if epochs_without_improvement >= args.patience:
                 print("Stopping training early")
                 break
+
+    print(f"\n--- TRAINING SUMMARY ---", flush=True)
+    print(f"\t--- Observation counts for training data ---", flush=True)
+    printObsCounts(train_data)
+    print(f"\t--- Observation counts for validation data ---", flush=True)
+    printObsCounts(validate_data)
+    print(f"\tBest validation loss: {best_vloss}", flush=True)
+    print(f"\tBest hyperparameter: {best_k}\n\n", flush = True)
 
     # Save the final best model based on train/validation to output dir
     outfile = f"{args.output_path}/{best_model_path}"
