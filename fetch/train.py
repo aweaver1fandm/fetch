@@ -12,7 +12,7 @@ from torchvision import datasets
 from torcheval.metrics.functional import binary_precision, binary_recall, binary_f1_score
 
 from fetch.pulsar_data import PulsarData
-from fetch.model import PulsarModel, TorchvisionModel
+from fetch.model import PulsarModel, TorchvisionModel, printObsCounts
 
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
