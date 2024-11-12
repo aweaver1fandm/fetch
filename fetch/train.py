@@ -297,7 +297,7 @@ def main():
         test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
         test_data = PulsarData(files=test_data_files)
         print(f"--- Observation counts for validation data ---", flush=True)
-        test_data.printObsCounts()
+        printObsCounts(test_data)
         tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
         
         test(tst_dataloader, model, args.probability)
