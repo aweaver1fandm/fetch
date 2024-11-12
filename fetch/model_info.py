@@ -8,20 +8,29 @@ from model import PulsarModel, TorchvisionModel
 
 import sys
 
+'''
 model = TorchvisionModel("DenseNet121", 32, 0)
 print(f"Model summary for DenseNet121")
 summary(model, input_size=(1, 256, 256), batch_dim = 0)
 print()
 print()
-
+'''
 model = TorchvisionModel("VGG16", 32, 0)
 print(model)
 
+for name, module in reversed(list(model.named_modules())):
+    print(name)
+    if (name.startswith("model.features")):
+        if (isinstance(module, nn.Conv2d)):
+            print("Conv2D")
+        if (isinstance(module, nn.ReLU)):
+            print("ReLU")
+'''
 print(f"Model summary for VGG16")
 summary(model, input_size=(1, 256, 256), batch_dim = 0)
 print()
 print()
-
+'''
 sys.exit(0)
 """
 models = ["DenseNet121", "DenseNet169", "DenseNet201", "VGG16", "VGG19", "Inception_V3"]

@@ -28,7 +28,9 @@ class TorchvisionModel(nn.Module):
         :param out_features: Number of output features for classifier 
                              This is the k training hyperparamter
                              referred to in the original FETCH paper
-        :param unfreeze_layers: Number of layers to unfreeze
+        :param unfreeze_layers: Number of layers to unfreeze.
+                                What counts as a layer will vary depending
+                                on the model
         """
         super().__init__()
         
@@ -67,6 +69,8 @@ class TorchvisionModel(nn.Module):
         """
         Go through each dense layer in each dense block and enable
         gradients until we hit the layer count or run out of layers
+
+        :param unfreeze_layers: Number of layers to unfreeze
         """
 
         if unfreeze_layers == 0:
@@ -106,12 +110,30 @@ class TorchvisionModel(nn.Module):
             if count == unfreeze_layers:
                 return
             
-    def _unfreeze_vgg(self, num_blocks: int) -> None:
-        # Replace/set the classifier layer
-        self.model.classifier = nn.Sequential(
-            nn.Linear(in_features=self.features, out_features=self.out_features),
-            nn.Dropout(p=0.3),
-        )
+    def _unfreeze_vgg(self, unfreeze_layers: int) -> None:
+        """
+        The layers we need to unfreeze reside in features model component
+        Here we unfreeze Conv2d and ReLU in pairs.  Since we are going backward
+        through model, ReLU will be encountered first and then Conv2d
+
+        :param unfreeze_layers: Number of layers to unfreeze
+        """
+        if unfreeze_layers == 0:
+            return
+
+        count = 0
+
+        for name, module in reversed(list(model.named_modules())):
+
+            if (name.startswith("model.features")):
+                if (isinstance(module, nn.Conv2d)):
+                    module.weight.requires_grad = True
+                    count += 1
+                if (isinstance(module, nn.ReLU)):
+                    module.weight.requires_grad = True
+
+                if count == unfreeze_layers:
+                return
 
     def _unfreeze_inception3(self, num_blocks: int) -> None:
         pass

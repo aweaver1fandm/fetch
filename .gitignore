@@ -9,3 +9,9 @@ fetch/.~lock.train_results.csv#
 notes.txt
 
 .~lock.train_results.xlsx#
+
+fetch/__pycache__/model.cpython-310.pyc
+
+fetch/tmp.txt
+
+fetch/model_info.py
