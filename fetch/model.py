@@ -133,7 +133,7 @@ class TorchvisionModel(nn.Module):
                     module.weight.requires_grad = True
 
                 if count == unfreeze_layers:
-                return
+                    return
 
     def _unfreeze_inception3(self, num_blocks: int) -> None:
         pass
