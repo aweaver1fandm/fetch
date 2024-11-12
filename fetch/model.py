@@ -57,6 +57,8 @@ class TorchvisionModel(nn.Module):
         if self.model_name.startswith("DenseNet"):
             self._unfreeze_densenet(unfreeze_layers)
         elif self.model_name.startswith("VGG"):
+            # Need to replace avgpool layer before classifier
+            self.avgpool = nn.AdaptiveAvgPool2d((1,1))
             self._unfreeze_vgg(unfreeze_layers)
         
         # Replace/set the classifier layer
