@@ -66,8 +66,6 @@ class TorchvisionModel(nn.Module):
             nn.Linear(in_features=self.features, out_features=self.out_features),
             nn.Dropout(p=0.3),
         )
-        print(f"--- Final model structure ---", flush=True)
-        print(f"{self.model}", flush=True)
 
     def _unfreeze_densenet(self, unfreeze_layers: int) -> None:
         """
