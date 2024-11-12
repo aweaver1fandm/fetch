@@ -58,7 +58,7 @@ class TorchvisionModel(nn.Module):
             self._unfreeze_densenet(unfreeze_layers)
         elif self.model_name.startswith("VGG"):
             # Need to replace avgpool layer before classifier
-            self.avgpool = nn.AdaptiveAvgPool2d((1,1))
+            self.model.avgpool = nn.AdaptiveAvgPool2d((1,1))
             self._unfreeze_vgg(unfreeze_layers)
         
         # Replace/set the classifier layer
@@ -66,6 +66,8 @@ class TorchvisionModel(nn.Module):
             nn.Linear(in_features=self.features, out_features=self.out_features),
             nn.Dropout(p=0.3),
         )
+        print(f"--- Final model structure ---", flush=True)
+        print(f"{self.model}", flush=True)
 
     def _unfreeze_densenet(self, unfreeze_layers: int) -> None:
         """
@@ -125,7 +127,7 @@ class TorchvisionModel(nn.Module):
 
         count = 0
 
-        for name, module in reversed(list(model.named_modules())):
+        for name, module in reversed(list(self.model.named_modules())):
 
             if (name.startswith("model.features")):
                 if (isinstance(module, nn.Conv2d)):
