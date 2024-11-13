@@ -298,7 +298,7 @@ def main():
         print(f"Loading test data.  This may take some time...", flush=True)
         test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
         test_data = PulsarData(files=test_data_files)
-        print(f"--- Observation counts for validation data ---", flush=True)
+        print(f"--- Observation counts for test data ---", flush=True)
         printObsCounts(test_data)
         tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
         
