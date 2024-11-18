@@ -9,6 +9,7 @@ import string
 import glob
 import sys
 import numpy as np
+from shutil import copy
 
 import torch
 from torch import nn
@@ -334,14 +335,14 @@ def main():
     print(f"\n--- TRAINING SUMMARY ---", flush=True)
     print(f"\t--- Observation counts for training data ---", flush=True)
     printObsCounts(train_data)
-    print(f"\t--- Observation counts for validation data ---", flush=True)
+    print(f"\n\t--- Observation counts for validation data ---", flush=True)
     printObsCounts(validate_data)
-    print(f"\tBest validation loss: {best_vloss}", flush=True)
+    print(f"\n\tBest validation loss: {best_vloss}", flush=True)
     print(f"\tUnfrozen layers with best validation loss: {best_unfrozen}\n\n", flush = True)
 
     # Save the final best model based on train/validation to output dir
-    outfile = f"{args.output_path}/{best_model_path}"
-    torch.save(model.state_dict(), outfile)
+    outfile = f"{args.output_path}/{args.model}_{args.data}.pth"
+    copy(best_model_path, outfile)
 
     # Test model
     tst_dataloader = None
