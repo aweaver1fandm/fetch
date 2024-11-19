@@ -130,9 +130,11 @@ class TorchvisionModel(nn.Module):
             if (name.startswith("model.features")):
                 if (isinstance(module, nn.Conv2d)):
                     module.weight.requires_grad = True
+                    module.bias.requires_grad = True
                     count += 1
                 if (isinstance(module, nn.ReLU)):
                     module.weight.requires_grad = True
+                    module.bias.requires_grad = True
 
                 if count == unfreeze_layers:
                     return
