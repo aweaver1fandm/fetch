@@ -1,7 +1,6 @@
 # FETCH
 
 
-[![DOI](https://zenodo.org/badge/165734093.svg?style=flat-square)](https://zenodo.org/badge/latestdoi/165734093)
 [![issues](https://img.shields.io/github/issues/devanshkv/fetch)](https://github.com/devanshkv/fetch/issues)
 [![forks](https://img.shields.io/github/forks/devanshkv/fetch)](https://github.com/devanshkv/fetch/network/members)
 [![stars](https://img.shields.io/github/stars/devanshkv/fetch)](https://github.com/devanshkv/fetch/stargazers)
