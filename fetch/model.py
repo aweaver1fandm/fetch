@@ -61,9 +61,8 @@ class TorchvisionModel(nn.Module):
             self.model.avgpool = nn.AdaptiveAvgPool2d((1,1))
             self._unfreeze_vgg(unfreeze_layers)
         
-        # Replace/set the classifier layer
+        # Replace/set the classifier layer with single dense layer
         self.model.classifier = nn.Sequential(
-            nn.ReLU(),
             nn.Linear(in_features=self.features, out_features=self.out_features),
             nn.Dropout(p=0.3),
         )
