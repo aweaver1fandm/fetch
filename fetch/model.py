@@ -1,11 +1,11 @@
-r""" Contains building blocks for the different pulsar models.
-All the models have the same broad architecture.  The biggest
-difference between them is the CNN model used to
-to process the freq and dm data.
-"""
 import torch
 import torch.nn as nn
 import torchvision.models as models
+
+__all__= [
+    "TorchVisionModel",
+    "PulsarModel",
+]
 
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -19,18 +19,18 @@ class TorchvisionModel(nn.Module):
              "Inception_V3": 2048,
     }   
     def __init__(self, model_name: str, out_features: int, unfreeze_layers: int = 0) -> None:
-        r"""
-        
-        Creates a processing block containing a pre-trained torchvision
+        r""" Creates a model based on a pre-trained Torchvision
         model like DenseNet121
         
-        :param model_name: The name of the pre-trained model to use
-        :param out_features: Number of output features for classifier 
-                             This is the k training hyperparamter
-                             referred to in the original FETCH paper
-        :param unfreeze_layers: Number of layers to unfreeze.
-                                What counts as a layer will vary depending
-                                on the model
+        Args:
+            model_name: The name of the pre-trained model to use
+            out_features: Number of output features for classifier 
+                          This is the k training hyperparamter
+                          referred to in the original FETCH paper
+            unfreeze_layers: Number of layers to unfreeze.  
+                             Default is ``0``
+
+                             Note: What counts as a layer varies depending on model
         """
         super().__init__()
         
@@ -68,11 +68,11 @@ class TorchvisionModel(nn.Module):
         )
 
     def _unfreeze_densenet(self, unfreeze_layers: int) -> None:
-        """
-        Go through each dense layer in each dense block and enable
+        r""" Go through each dense layer in each dense block and enable
         gradients until we hit the layer count or run out of layers
 
-        :param unfreeze_layers: Number of layers to unfreeze
+        Args:
+            unfreeze_layers: Number of layers to unfreeze
         """
 
         if unfreeze_layers == 0:
@@ -113,12 +113,12 @@ class TorchvisionModel(nn.Module):
                 return
             
     def _unfreeze_vgg(self, unfreeze_layers: int) -> None:
-        """
-        The layers we need to unfreeze reside in features model component
+        r""" The layers we need to unfreeze reside in features model component
         Here we unfreeze Conv2d and ReLU in pairs.  Since we are going backward
         through model, ReLU will be encountered first and then Conv2d
 
-        :param unfreeze_layers: Number of layers to unfreeze
+        Args:
+            unfreeze_layers: Number of layers to unfreeze
         """
         if unfreeze_layers == 0:
             return
@@ -129,13 +129,17 @@ class TorchvisionModel(nn.Module):
 
             if (name.startswith("model.features")):
                 if (isinstance(module, nn.Conv2d)):
-                    module.weight.requires_grad = True
-                    module.bias.requires_grad = True
                     count += 1
+                    #module.weight.requires_grad = True
+                    #module.bias.requires_grad = True
+                    for param in module.parameters()
+                        param.requires_grad = True
+                    
                 if (isinstance(module, nn.ReLU)):
-                    module.weight.requires_grad = True
-                    module.bias.requires_grad = True
-
+                    #module.weight.requires_grad = True
+                    #module.bias.requires_grad = True
+                    for param in module.parameters()
+                        param.requires_grad = True
                 if count == unfreeze_layers:
                     return
 
@@ -146,11 +150,10 @@ class TorchvisionModel(nn.Module):
         output = self.block1(data)
         output = self.model(output)
 
-        # Needed for validation/testing/predicting
-        # because transfer training of individual models
-        # uses BinaryCrossEntropy loss with logits
-        # which applies sigmoid as part of its calculations
-        # So training has sigmoid but the model will need it when not training
+        # Check if we are using an individual model or not
+        # Training of the indvidual model uses binary cross
+        # entropy with logits which applies Sigmoid.
+        # If we are testing we need to add the sigmoid
         if self.out_features == 1 and not(self.model.training):
             output = nn.functional.sigmoid(output)
 
@@ -158,18 +161,18 @@ class TorchvisionModel(nn.Module):
 
 class PulsarModel(nn.Module):
     def __init__(self, freq_module: nn.Module, dm_module: nn.Module, k: int) -> None:
-        r"""
-        
-        Builds a combined pulsar prediction model using pre-trained freq and dm modules
+        r""" Builds a combined pulsar prediction model using pre-trained freq and dm modules
 
-        :param freq_module: A pre-trained nn.Module for frequency processing
-        :param dm_module: A pre-trained nn.Module for dm processing
-        :param k: This is the k training hyperparamter
-                  referred to in the original FETCH paper
+        Args: 
+            freq_module: A pre-trained Torchvision model trained on frequency data
+            dm_module: A pre-trained Torchvision model trained on dm data
+            k: Number of hyperparameters to include in model
+            
+            Note: This is the k training hyperparamter referred to in the original FETCH paper
         """
         super().__init__()
     
-        print(f"Building pulsar model using pre-trained modules", flush=True)
+        print(f"Building pulsar model...", flush=True)
 
         self.freq_model = freq_module
         self.dm_model = dm_module
@@ -189,11 +192,10 @@ class PulsarModel(nn.Module):
         output = torch.mul(freq_output, dm_output)
         output = self.classifier(output)
 
-        # Needed for validation/testing/predicting
-        # because training of models
-        # uses BinaryCrossEntropy loss with logits
-        # which applies sigmoid as part of its calculations
-        # So training has sigmoid but the model will need it when not training
+        # Check if we are using an individual model or not
+        # Training of the indvidual model uses binary cross
+        # entropy with logits which applies Sigmoid.
+        # If we are testing we need to add the sigmoid
         if not(self.training):
             output = nn.functional.sigmoid(output)
 

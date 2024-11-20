@@ -18,6 +18,9 @@ from fetch.model import TorchvisionModel
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def main():
+    r""" Entry point for running via command line
+    Uses a Torchvision model that has been transfer trained to make predictions
+    """
     parser = argparse.ArgumentParser(
         description="Fast Extragalactic Transient Candiate Hunter (FETCH)",
     )
@@ -102,7 +105,7 @@ def main():
             predictions.extend(np.round(predicted >= args.probability))           
 
     # Save the results
-    print(f"Saving final results")
+    print(f"Saving final results", flush=True)
     results_dict = {}
     results_dict["candidate"] = cands_to_eval
     results_dict["probability"] = probs

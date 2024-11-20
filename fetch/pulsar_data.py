@@ -11,9 +11,19 @@ import scipy.signal as s
 import glob
 from torch.utils.data import DataLoader
 
+__all__ = [
+    "printObsCounts",
+    "PulsarData",
+]
+
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 def printObsCounts(dataset) -> None:
+    r""" Prints summary information for a set of pulsar observations
+
+    Args:
+        dataset: 
+    """
     pos_count = 0
     neg_count = 0
     for freq, dm, label in dataset:
@@ -34,13 +44,17 @@ class PulsarData(Dataset):
         dt_dim: tuple = (256, 256),
         n_channels:int = 1,
     ) -> None:
-        r"""
+        r""" A set of pulsar observations
+        A pulsar observation consists of frequency information,
+        dm information, and possibly a label 
+        ``0`` for not a pulsar
+        ``1`` for a pulsar
 
-        :param files: list of h5 files
-        :param labels: list of labels (use fake labels when using predict)
-        :param ft_dim: 2D shape (def (256, 256)
-        :param dt_dim: 2D shape (def (256, 256)
-        :param n_channels: number of channels in data (def = 1)
+        Args:
+            files: List of h5 files containing pulsar observations
+            ft_dim: 2D shape of frequency data. Default: 256x256
+            dt_dim: 2D shape of dm data.  Default: 256x256
+            n_channels: Number of channels in data. Default: 1
         """
     
         self.ft_dim = ft_dim
@@ -57,19 +71,9 @@ class PulsarData(Dataset):
             self._data_from_h5(f)
 
     def __len__(self)-> int:
-        """
-
-        :return: Number of observations in data set
-        """
         return self.num_observations
 
     def __getitem__(self, index: int)-> tuple:
-        """
-
-        :param index: index
-        :return: Specific pulsar data(ft and dt) and label
-        """
-
         ft_data = np.empty((*self.ft_dim, self.n_channels))
         dt_data = np.empty((*self.dt_dim, self.n_channels))
 
@@ -88,9 +92,7 @@ class PulsarData(Dataset):
         return ft_data, dt_data, self.labels[index]
         
     def _data_from_h5(self, file: str) -> None:
-        r"""
-
-        Reads a single .h5 file 
+        r""" Reads a single .h5 file 
         The file might represent one or multiple observations
 
         Assumes the following dataset names:
@@ -100,7 +102,8 @@ class PulsarData(Dataset):
 
         Adds the observations to the arrays for the entire data set
 
-        :param file: The .h5 file containing the freq, dm, and possibly label for pulsar(s)
+        Args:
+            file: The .h5 file containing the freq, dm, and possibly label for pulsar(s)
         """
 
         data = h5py.File(file, 'r')

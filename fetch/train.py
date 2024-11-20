@@ -24,12 +24,18 @@ os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 def train_loop(dataloader: DataLoader, 
                model: nn.Module,
-               loss_fn, 
-               optimizer,
+               loss_fn: nn._Loss, 
+               optimizer: torch.optimizer.Optimizer,
                batch_size: int,
     ) -> None:
-    r"""
-    Perform a single pass of training on a model
+    r"""Perform a single pass of training on a model
+
+    Args:
+        dataloader: Contains batches of data
+        model: The model being used
+        loss_fn: Loss function used for training
+        optimizer: Optimization being used for training
+        batch_size: Number of data points per batch
     """
 
     size = len(dataloader.dataset)
@@ -62,12 +68,19 @@ def train_loop(dataloader: DataLoader,
     
 def validate_loop(dataloader: DataLoader, 
                   model: nn.Module, 
-                  loss_fn,
+                  loss_fn: nn._Loss,
                   prob: float,
     ) -> float:
-    r"""
-    
-    Performs a single validation pass for a model
+    r""" Performs a single validation pass for a model
+
+    Args:
+        dataloader: Contains batches of data
+        model: The model being used
+        loss_fn: Loss function used for training
+        prob: Probability criteria to determine if observation is pulsar or not
+
+    Return:
+        The calculated validation loss for this pass
     """
 
     model.eval()
@@ -99,10 +112,13 @@ def validate_loop(dataloader: DataLoader,
 
     return validation_loss
 
-def test(dataloader: DataLoader, model: nn.Module, prob: float) -> None:
-    r"""
+def test(dataloader: DataLoader, model: nn.Module) -> None:
+    r""" Tests a trained model, reporting recall, precision, F1
+    at multiple probability criteria levels
 
-    Performs testing on fully trained model
+    Args:
+        dataloader: Contains batches of data
+        model: The model being used
     """
     # Set the model to evaluation mode - important for batch normalization and dropout layers
     model.eval()
@@ -137,12 +153,15 @@ def test(dataloader: DataLoader, model: nn.Module, prob: float) -> None:
         precision = binary_precision(pred_tensor, truth_tensor)
         f1 = binary_f1_score(pred_tensor, truth_tensor)
 
-        print(f"--- Test results: Threshold {threshold} --", flush=True)
+        print(f"\n--- Test results: Threshold {threshold} --", flush=True)
         print(f"\tRecall: {(100*recall):.2f}%", flush=True)
         print(f"\tPrecision: {(100*precision):.2f}%", flush=True)
         print(f"\tF1: {(100*f1):.2f}%", flush=True)
 
-def main():
+def main() -> None:
+    r""" Entry point for running via command line
+    Trains a combined model for pulsar prediction
+    """
     parser = argparse.ArgumentParser(
         description="Fast Extragalactic Transient Candiate Hunter (FETCH)"
     )
@@ -303,4 +322,4 @@ def main():
         printObsCounts(test_data)
         tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
         
-        test(tst_dataloader, model, args.probability)
+        test(tst_dataloader, model)
