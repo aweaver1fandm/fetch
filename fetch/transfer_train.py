@@ -132,13 +132,12 @@ def validate_loop(dataloader: DataLoader,
             correct += (pred == labels).type(torch.float).sum().item()
 
             # To compute on F1
-            #predictions.extend(pred.to('cpu').numpy())
+            predictions.extend(pred.to('cpu').numpy())
             truth.extend(labels.to('cpu').numpy())
 
     # To compute on F1
-    #pred_np_arr = np.array(predictions)
-    #binary_pred = (pred_np_arr >= prob)
-    pred_tensor = torch.tensor(pred)
+    pred_np_arr = np.array(predictions)
+    pred_tensor = torch.tensor(pred_np_arr)
     truth_tensor = torch.tensor(truth)
     f1 = binary_f1_score(pred_tensor, truth_tensor)
     print(f"Validation F1 score: {f1}\n", flush=True)
