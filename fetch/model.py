@@ -63,8 +63,8 @@ class TorchvisionModel(nn.Module):
         
         # Replace/set the classifier layer
         self.model.classifier = nn.Sequential(
-            nn.Linear(in_features=self.features, out_features=self.out_features),
             nn.ReLU(),
+            nn.Linear(in_features=self.features, out_features=self.out_features),
             nn.Dropout(p=0.3),
         )
 

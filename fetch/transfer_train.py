@@ -140,7 +140,7 @@ def validate_loop(dataloader: DataLoader,
     pred_tensor = torch.tensor(pred_np_arr)
     truth_tensor = torch.tensor(truth)
     f1 = binary_f1_score(pred_tensor, truth_tensor)
-    print(f"Validation F1 score: {f1}\n", flush=True)
+    print(f"\nValidation F1 score: {f1}", flush=True)
 
     validation_loss /= num_batches
     correct /= size
