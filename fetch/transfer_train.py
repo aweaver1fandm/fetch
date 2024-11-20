@@ -9,6 +9,7 @@ from shutil import copy
 import torch
 from torch import nn
 from torch.nn.modules.loss import _Loss
+from torch.optim import Optimizer
 
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets
@@ -27,7 +28,7 @@ def train_loop(dataloader: DataLoader,
                model: nn.Module,
                data: str,
                loss_fn: _Loss, 
-               optimizer: torch.optimizer.Optimizer,
+               optimizer: Optimizer,
                batch_size: int,
     ) -> None:
     r"""Perform a single pass of training on a model
