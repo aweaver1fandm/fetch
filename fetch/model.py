@@ -132,13 +132,13 @@ class TorchvisionModel(nn.Module):
                     count += 1
                     #module.weight.requires_grad = True
                     #module.bias.requires_grad = True
-                    for param in module.parameters()
+                    for param in module.parameters():
                         param.requires_grad = True
                     
                 if (isinstance(module, nn.ReLU)):
                     #module.weight.requires_grad = True
                     #module.bias.requires_grad = True
-                    for param in module.parameters()
+                    for param in module.parameters():
                         param.requires_grad = True
                 if count == unfreeze_layers:
                     return
