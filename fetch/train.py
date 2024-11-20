@@ -9,6 +9,8 @@ import numpy as np
 
 import torch
 from torch import nn
+from torch.nn.modules.loss import _Loss
+
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets
 
@@ -24,7 +26,7 @@ os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 def train_loop(dataloader: DataLoader, 
                model: nn.Module,
-               loss_fn: nn._Loss, 
+               loss_fn: _Loss, 
                optimizer: torch.optimizer.Optimizer,
                batch_size: int,
     ) -> None:
@@ -68,7 +70,7 @@ def train_loop(dataloader: DataLoader,
     
 def validate_loop(dataloader: DataLoader, 
                   model: nn.Module, 
-                  loss_fn: nn._Loss,
+                  loss_fn: _Loss,
                   prob: float,
     ) -> float:
     r""" Performs a single validation pass for a model

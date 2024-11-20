@@ -8,6 +8,8 @@ from shutil import copy
 
 import torch
 from torch import nn
+from torch.nn.modules.loss import _Loss
+
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets
 
@@ -24,7 +26,7 @@ os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 def train_loop(dataloader: DataLoader, 
                model: nn.Module,
                data: str,
-               loss_fn: nn._Loss, 
+               loss_fn: _Loss, 
                optimizer: torch.optimizer.Optimizer,
                batch_size: int,
     ) -> None:
@@ -77,7 +79,7 @@ def train_loop(dataloader: DataLoader,
 def validate_loop(dataloader: DataLoader, 
                   model: nn.Module, 
                   data: str,
-                  loss_fn: nn._Loss,
+                  loss_fn: _Loss,
                   prob: float,
     ) -> float:
     r""" Performs a single validation pass for a model
@@ -97,6 +99,10 @@ def validate_loop(dataloader: DataLoader,
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     validation_loss, correct = 0, 0
+
+    # To optimize on F1
+    truth = []
+    predictions = []
 
     # Evaluating the model with torch.no_grad() ensures 
     # that no gradients are computed during validation
@@ -118,17 +124,31 @@ def validate_loop(dataloader: DataLoader,
             else:
                 print(f"Invalid data type provided: {data}")
                 sys.exit(0)
+
+            # To optimize on F1
+            predictions.extend(pred.to('cpu').numpy())
+            truth.extend(labels.to('cpu').numpy())
             
             # Convert to either 0 or 1 based on prediction probability
-            pred = (pred >= prob).float()
-            validation_loss += loss_fn(pred, labels.float()).item()
-            correct += (pred  == labels).type(torch.float).sum().item()
+            #pred = (pred >= prob).float()
+            #validation_loss += loss_fn(pred, labels.float()).item()
+            #correct += (pred  == labels).type(torch.float).sum().item()
 
-    validation_loss /= num_batches
-    correct /= size
-    print(f"Validation Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {validation_loss:>8f} \n", flush=True)
+    # To optimize on F1
+    pred_np_arr = np.array(predictions)
+    binary_pred = (pred_np_arr >= prob)
+    pred_tensor = torch.tensor(binary_pred)
+    truth_tensor = torch.tensor(truth)
+    f1 = binary_f1_score(pred_tensor, truth_tensor)
+    print(f"Validation F1 score: {f1}", flush=True)
 
-    return validation_loss
+    #validation_loss /= num_batches
+    #correct /= size
+    #print(f"Validation Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {validation_loss:>8f} \n", flush=True)
+
+    #return validation_loss
+
+    return f1
 
 def test(dataloader: DataLoader, model: nn.Module, data: str) -> None:
     r""" Tests a trained model, reporting recall, precision, F1
