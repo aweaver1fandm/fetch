@@ -47,34 +47,34 @@ def train_loop(dataloader: DataLoader,
     # Set the model to training mode - important for batch normalization and dropout layers
     model.train()
 
-    for batch, (freq_data, dm_data, labels) in enumerate(dataloader):
-
-        pred = None
+    for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
+        batch_data = None
 
         # Load labels to device
-        labels = labels.to(DEVICE)
+        labels = labels.to(DEVICE, non_blocking=True)
 
         # Add some noise to freq data to help avoid overtraining
         if data == "freq":
             noise = torch.randn_like(freq_data) * .1
-            freq_data = freq_data + noise
-            freq_data = freq_data.to(DEVICE)
-            pred = model(freq_data)
+            batch_data = freq_data + noise
         elif data == "dm":
-            dm_data = dm_data.to(DEVICE)
-            pred = model(dm_data)
+            batch_data = dm_data
         else:
             print(f"Invalid data type provided: {data}", flush=True)
             sys.exit(0)
 
+        batch_data.to(DEVICE, non_blocking=True)
+        predicted = model(batch_data)
+
         # Compute loss and backpropogate
-        loss = loss_fn(pred, labels.float())
+        loss = loss_fn(predicted, labels.float())
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
 
         if batch % 100 == 0:
-            loss, current = loss.item(), batch * batch_size + len(freq_data)
+            loss = loss.item() 
+            current = batch_idx * batch_size + len(freq_data)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
     
 def validate_loop(dataloader: DataLoader, 
@@ -101,38 +101,42 @@ def validate_loop(dataloader: DataLoader,
     num_batches = len(dataloader)
     validation_loss, correct = 0, 0
 
-    # To optimize on F1
+    # Used to calculate F1
     truth = []
     predictions = []
 
     # Evaluating the model with torch.no_grad() ensures 
     # that no gradients are computed during validation
     with torch.no_grad():
-        for freq_data, dm_data, labels in dataloader:
-
-            pred = None
+        for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader)
+            batch_data = None
 
             # Load labels to device
-            labels = labels.to(DEVICE)
+            labels = labels.to(DEVICE, non_blocking=True)
 
             # Load data to device and make predictions
             if data == "freq":
-                freq_data = freq_data.to(DEVICE)
-                pred = model(freq_data)
+                batch_data = freq_data
             elif data == "dm":
-                dm_data = dm_data.to(DEVICE)
-                pred = model(dm_data)
+                batch_data = dm_data
             else:
                 print(f"Invalid data type provided: {data}")
                 sys.exit(0)
 
+            batch_data.to(DEVICE, non_blocking=True)
+            predicted = model(batch_data)
+
             # Convert to either 0 or 1 based on prediction probability
-            pred = (pred >= prob).float()
-            validation_loss += loss_fn(pred, labels.float()).item()
-            correct += (pred == labels).type(torch.float).sum().item()
+            predicted = (predicted >= prob).float()
+            batch_loss = loss_fn(predicted, labels.float())
+            validation_loss += batch_loss.item()
+            print(f"\tBatch number: {batch_idx}", flush=True)
+            print(f"\t\tBatch loss: {batch_loss}", flush=True)
+            print(f"\t\tRunning validation loss: {validation_loss}", flush=True)
+            correct += (predicted == labels).type(torch.float).sum().item()
 
             # To compute on F1
-            predictions.extend(pred.to('cpu').numpy())
+            predictions.extend(predicted.to('cpu').numpy())
             truth.extend(labels.to('cpu').numpy())
 
     # To compute on F1
@@ -168,25 +172,25 @@ def test(dataloader: DataLoader, model: nn.Module, data: str) -> None:
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
-        for freq_data, dm_data, labels in dataloader:
-             
-            pred = None
+        for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader)
+            batch_data = None
 
             # Load labels to device
-            labels = labels.to(DEVICE)
+            labels = labels.to(DEVICE, non_blocking=True)
             
             # Load data to device and make predictions
             if data == "freq":
-                freq_data = freq_data.to(DEVICE)
-                pred = model(freq_data)
+                batch_data = freq_data
             elif data == "dm":
-                dm_data = dm_data.to(DEVICE)
-                pred = model(dm_data)
+                batch_data = dm_data
             else:
                 print(f"Invalid data type provided: {data}")
                 sys.exit(0)
 
-            predictions.extend(pred.to('cpu').numpy())
+            batch_data.to(DEVICE, non_blocking=True)
+            predicted = model(batch_data)
+
+            predictions.extend(predicted.to('cpu').numpy())
             truth.extend(labels.to('cpu').numpy())
 
     pred_np_arr = np.array(predictions)
@@ -277,8 +281,8 @@ def main() -> None:
     train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
 
-    tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
-    v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
+    tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, pin_memory=True, shuffle=True)
+    v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, pin_memory=True, shuffle=False)
 
     best_model_path = ""
     best_vloss = float('inf')
@@ -393,6 +397,6 @@ def main() -> None:
         test_data = PulsarData(files=test_data_files)
         print(f"--- Observation counts for test data ---", flush=True)
         printObsCounts(test_data)
-        tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
+        tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, pin_memory=True, shuffle=False)
         
         test(tst_dataloader, model, args.data)
