@@ -82,7 +82,7 @@ def train_loop(dataloader: DataLoader,
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
 
     end_time = time.time()
-    print(f"Elapsed time of train loop: {end_time - start_time} seconds", flush=True)
+    print(f"Elapsed time of single train loop: {end_time - start_time} seconds", flush=True)
     
 def validate_loop(dataloader: DataLoader, 
                   model: nn.Module, 
@@ -116,7 +116,7 @@ def validate_loop(dataloader: DataLoader,
     # Evaluating the model with torch.no_grad() ensures 
     # that no gradients are computed during validation
     with torch.no_grad():
-        for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader)
+        for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
             batch_data = None
 
             # Load labels to device
@@ -184,7 +184,7 @@ def test(dataloader: DataLoader, model: nn.Module, data: str) -> None:
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
-        for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader)
+        for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
             batch_data = None
 
             # Load labels to device
