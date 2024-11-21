@@ -72,9 +72,13 @@ class PulsarData(Dataset):
 
     # Custom memory pinning method on custom type
     def pin_memory(self):
-        self.ft_data = self.ft_data.pin_memory()
-        self.dt_data = self.dt_data.pin_memory()
-        self.labels = self.labels.pin_memory()
+        for i in range(num_observations):
+            self.ft_data[i] = self.ft_data[i].pin_memory()
+            self.dt_data[i] = self.dt_data[i].pin_memory()
+            self.labels[i] = self.labels[i].pin_memory()
+        #self.ft_data = self.ft_data.pin_memory()
+        #self.dt_data = self.dt_data.pin_memory()
+        #self.labels = self.labels.pin_memory()
 
         return self
     
