@@ -19,6 +19,8 @@ from torcheval.metrics.functional import binary_precision, binary_recall, binary
 from fetch.pulsar_data import PulsarData, printObsCounts
 from fetch.model import TorchvisionModel
 
+import time
+
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -46,6 +48,8 @@ def train_loop(dataloader: DataLoader,
 
     # Set the model to training mode - important for batch normalization and dropout layers
     model.train()
+
+    start_time = time.time()
 
     for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
         batch_data = None
@@ -76,6 +80,9 @@ def train_loop(dataloader: DataLoader,
             loss = loss.item() 
             current = batch_idx * batch_size + len(freq_data)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
+
+    end_time = time.time()
+    print(f"Elapsed time of train loop: {end_time - start_time} seconds", flush=True)
     
 def validate_loop(dataloader: DataLoader, 
                   model: nn.Module, 
@@ -105,6 +112,7 @@ def validate_loop(dataloader: DataLoader,
     truth = []
     predictions = []
 
+    start_time = time.time()
     # Evaluating the model with torch.no_grad() ensures 
     # that no gradients are computed during validation
     with torch.no_grad():
@@ -139,6 +147,9 @@ def validate_loop(dataloader: DataLoader,
             predictions.extend(predicted.to('cpu').numpy())
             truth.extend(labels.to('cpu').numpy())
 
+    end_time = time.time()
+    print(f"Elapsed time of validate loop: {end_time - start_time} seconds", flush=True)
+
     # To compute on F1
     pred_np_arr = np.array(predictions)
     pred_tensor = torch.tensor(pred_np_arr)
@@ -169,6 +180,7 @@ def test(dataloader: DataLoader, model: nn.Module, data: str) -> None:
     truth = []
     predictions = []
 
+    start_time = time.time()
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
@@ -192,6 +204,9 @@ def test(dataloader: DataLoader, model: nn.Module, data: str) -> None:
 
             predictions.extend(predicted.to('cpu').numpy())
             truth.extend(labels.to('cpu').numpy())
+
+    end_time = time.time()
+    print(f"Elapsed time of validate loop: {end_time - start_time} seconds", flush=True)
 
     pred_np_arr = np.array(predictions)
     thresholds = [0.3, 0.4, 0.5, 0.6, 0.7]
