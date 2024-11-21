@@ -89,7 +89,7 @@ class PulsarData(Dataset):
         ft_data = np.reshape(ft_data, (self.n_channels, *self.ft_dim))
         dt_data = np.reshape(dt_data, (self.n_channels, *self.dt_dim))
 
-        return ft_data, dt_data, self.labels[index]
+        return torch.from_numpy(ft_data), torch.from_numpy(dt_data), torch.tensor(self.labels[index])
         
     def _data_from_h5(self, file: str) -> None:
         r""" Reads a single .h5 file 

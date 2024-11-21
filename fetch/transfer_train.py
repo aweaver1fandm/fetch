@@ -296,8 +296,8 @@ def main() -> None:
     train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
 
-    tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, num_workers=2, pin_memory=True, shuffle=True)
-    v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, num_workers=2, pin_memory=True, shuffle=False)
+    tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, pin_memory=True, shuffle=True)
+    v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, pin_memory=True, shuffle=False)
 
     best_model_path = ""
     best_vloss = float('inf')
@@ -412,6 +412,6 @@ def main() -> None:
         test_data = PulsarData(files=test_data_files)
         print(f"--- Observation counts for test data ---", flush=True)
         printObsCounts(test_data)
-        tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, num_workers=2, pin_memory=True, shuffle=False)
+        tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, pin_memory=True, shuffle=False)
         
         test(tst_dataloader, model, args.data)
