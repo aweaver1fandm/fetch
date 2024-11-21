@@ -70,6 +70,14 @@ class PulsarData(Dataset):
         for f in files:
             self._data_from_h5(f)
 
+    # Custom memory pinning method on custom type
+    def pin_memory(self):
+        self.ft_data = self.ft_data.pin_memory()
+        self.dt_data = self.dt_data.pin_memory()
+        self.labels = self.labels.pin_memory()
+
+        return self
+    
     def __len__(self)-> int:
         return self.num_observations
 
@@ -89,6 +97,7 @@ class PulsarData(Dataset):
         ft_data = np.reshape(ft_data, (self.n_channels, *self.ft_dim))
         dt_data = np.reshape(dt_data, (self.n_channels, *self.dt_dim))
 
+        # Return data as PyTorch Tensor
         return torch.from_numpy(ft_data), torch.from_numpy(dt_data), torch.tensor(self.labels[index])
         
     def _data_from_h5(self, file: str) -> None:
