@@ -60,18 +60,15 @@ def train_loop(dataloader: DataLoader,
         # Add some noise to freq data to help avoid overtraining
         if data == "freq":
             noise = torch.randn_like(freq_data) * .1
-            freq_data = freq_data + noise
-            freq_data.to(DEVICE, non_blocking=True)
-            predicted = model(freq_data)
+            batch_data = freq_data + noise
         elif data == "dm":
-            dm_data.to(DEVICE, non_blocking=True)
-            predicted = model(dm_data)
+            batch_data = dm_data
         else:
             print(f"Invalid data type provided: {data}", flush=True)
             sys.exit(0)
 
-        #batch_data.to(DEVICE, non_blocking=True)
-        #predicted = model(batch_data)
+        batch_data.to(DEVICE, non_blocking=True)
+        predicted = model(batch_data)
 
         # Compute loss and backpropogate
         loss = loss_fn(predicted, labels.float())
@@ -299,8 +296,8 @@ def main() -> None:
     train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
 
-    tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, pin_memory=True, shuffle=True)
-    v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, pin_memory=True, shuffle=False)
+    tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, num_workers=2, pin_memory=True, shuffle=True)
+    v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, num_workers=2, pin_memory=True, shuffle=False)
 
     best_model_path = ""
     best_vloss = float('inf')
@@ -415,6 +412,6 @@ def main() -> None:
         test_data = PulsarData(files=test_data_files)
         print(f"--- Observation counts for test data ---", flush=True)
         printObsCounts(test_data)
-        tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, pin_memory=True, shuffle=False)
+        tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, num_workers=2, pin_memory=True, shuffle=False)
         
         test(tst_dataloader, model, args.data)
