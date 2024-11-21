@@ -60,15 +60,18 @@ def train_loop(dataloader: DataLoader,
         # Add some noise to freq data to help avoid overtraining
         if data == "freq":
             noise = torch.randn_like(freq_data) * .1
-            batch_data = freq_data + noise
+            freq_data = freq_data + noise
+            freq_data.to(DEVICE, non_blocking=True)
+            predicted = model(freq_data)
         elif data == "dm":
-            batch_data = dm_data
+            dm_data.to(DEVICE, non_blocking=True)
+            predicted = model(dm_data)
         else:
             print(f"Invalid data type provided: {data}", flush=True)
             sys.exit(0)
 
-        batch_data.to(DEVICE, non_blocking=True)
-        predicted = model(batch_data)
+        #batch_data.to(DEVICE, non_blocking=True)
+        #predicted = model(batch_data)
 
         # Compute loss and backpropogate
         loss = loss_fn(predicted, labels.float())
