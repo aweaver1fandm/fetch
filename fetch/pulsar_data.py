@@ -70,15 +70,34 @@ class PulsarData(Dataset):
         for f in files:
             self._data_from_h5(f)
 
+        # Now clean up the data
+        print(f"Cleaning up data...", flush=True)
+        for idx in range(self.num_observations):
+            freq_obs = self.ft_data[idx]
+            dm_obs = self.dt_data[idx]
+
+            ft_data = np.empty((*self.ft_dim, self.n_channels))
+            dt_data = np.empty((*self.dt_dim, self.n_channels))
+
+            ft_data = s.detrend(np.nan_to_num(np.array(freq_obs, dtype=np.float32).T))
+            ft_data /= np.std(ft_data)
+            ft_data -= np.median(ft_data)
+        
+            dt_data = np.nan_to_num(np.array(dm_obs], dtype=np.float32))
+            dt_data /= np.std(dt_data)
+            dt_data -= np.median(dt_data)
+
+            ft_data = np.reshape(ft_data, (self.n_channels, *self.ft_dim))
+            dt_data = np.reshape(dt_data, (self.n_channels, *self.dt_dim))
+
+            self.ft_data[idx] = ft_data
+            self.dt_data[idx] = dt_data
+
     # Custom memory pinning method on custom type
     def pin_memory(self):
-        for i in range(num_observations):
-            self.ft_data[i] = self.ft_data[i].pin_memory()
-            self.dt_data[i] = self.dt_data[i].pin_memory()
-            self.labels[i] = self.labels[i].pin_memory()
-        #self.ft_data = self.ft_data.pin_memory()
-        #self.dt_data = self.dt_data.pin_memory()
-        #self.labels = self.labels.pin_memory()
+        self.ft_data = self.ft_data.pin_memory()
+        self.dt_data = self.dt_data.pin_memory()
+        self.labels = self.labels.pin_memory()
 
         return self
     
@@ -168,22 +187,8 @@ class PulsarData(Dataset):
             sys.exit(1)
 
         self.num_observations += num_observations
-
-        # Clean up the data bit
-        for idx in range(num_observations):
-            ft_data = s.detrend(np.nan_to_num(np.array(freq_data[idx], dtype=np.float32).T))
-            ft_data /= np.std(ft_data)
-            ft_data -= np.median(ft_data)
-        
-            dt_data = np.nan_to_num(np.array(dm_data[idx], dtype=np.float32))
-            dt_data /= np.std(dt_data)
-            dt_data -= np.median(dt_data)
-
-            ft_data = np.reshape(ft_data, (self.n_channels, *self.ft_dim))
-            dt_data = np.reshape(dt_data, (self.n_channels, *self.dt_dim))
-
-            self.ft_data = np.append(self.ft_data, ft_data, axis=0)
-            self.dt_data = np.append(self.dt_data, dt_data, axis=0)
+        self.ft_data = np.append(self.ft_data, ft_data, axis=0)
+        self.dt_data = np.append(self.dt_data, dt_data, axis=0)
         
         # Handle the labels if they exist
         if "data_labels" in data:

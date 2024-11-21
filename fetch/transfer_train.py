@@ -67,7 +67,7 @@ def train_loop(dataloader: DataLoader,
             print(f"Invalid data type provided: {data}", flush=True)
             sys.exit(0)
 
-        batch_data.to(DEVICE, non_blocking=True)
+        batch_data = batch_data.to(DEVICE, non_blocking=True)
         predicted = model(batch_data)
 
         # Compute loss and backpropogate
@@ -131,7 +131,7 @@ def validate_loop(dataloader: DataLoader,
                 print(f"Invalid data type provided: {data}")
                 sys.exit(0)
 
-            batch_data.to(DEVICE, non_blocking=True)
+            batch_data = batch_data.to(DEVICE, non_blocking=True)
             predicted = model(batch_data)
 
             # Convert to either 0 or 1 based on prediction probability
