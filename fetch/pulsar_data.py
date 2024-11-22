@@ -151,26 +151,31 @@ class PulsarData(Dataset):
         freq_data = np.array(data["data_freq_time"][:])
         dm_data = np.array(data["data_dm_time"][:])
 
-        shape = freq_data.shape
+        # Assuming dm_data shape and size is same as freq_data
+        data_shape = freq_data.shape
+        data_size = len(data_shape)
 
+        # Initialize some variables
         num_observations = 1
         data_dims = (shape[0], shape[1])
         
-        """ Need to handle different .h5 data situations
-        Shape of length 4: Multiple observations in a file (e.g., 40000x256x256x1)
-        Shape of length 3: Two possibilities
-                           If last value is 1, then single observation (e.g., 256x256x1)
-                           Otherwise assume it's multiple observations (e.g., 500x256x256)
-         Shape of length 2: Single observation
+        """ Need to handle different .h5 data size situations
+        Assuming the following situations
+        
+        Size 4: Num observations x dim x dim x channels
+        Size 3: Num observations x dim x dim 
+        Size 2: dim x dim
         """
         if len(shape) == 4:
             freq_data = np.reshape(freq_data, (shape[0], shape[1], shape[2]))
             dm_data = np.reshape(dm_data, (shape[0], shape[1], shape[2]))
             num_observations = shape[0]
             data_dims = (shape[1], shape[2])
-        elif ((len(shape) == 3) and (shape[2] == 1)):
+            self.n_channels = shape[3]
+        elif ((len(shape) == 3) and (shape[2] <= 3)):
             freq_data = np.reshape(freq_data, (1, shape[0], shape[1]))
             dm_data = np.reshape(dm_data, (1, shape[0], shape[1]))
+            self.n_channels = shape[2]
         elif len(shape) == 3:
             num_observations = shape[0]
             data_dims = (shape[1], shape[2])
@@ -187,8 +192,14 @@ class PulsarData(Dataset):
             sys.exit(1)
 
         self.num_observations += num_observations
-        self.ft_data = np.append(self.ft_data, ft_data, axis=0)
-        self.dt_data = np.append(self.dt_data, dt_data, axis=0)
+
+        tmp_ft_data = []
+        tmp_dt_data = []
+
+        for idx in range(num_observations):
+        # Original setup
+        #self.ft_data = np.append(self.ft_data, ft_data, axis=0)
+        #self.dt_data = np.append(self.dt_data, dt_data, axis=0)
         
         # Handle the labels if they exist
         if "data_labels" in data:
