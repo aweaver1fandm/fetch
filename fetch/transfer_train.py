@@ -197,7 +197,7 @@ def test(dataloader: DataLoader, model: nn.Module, data: str) -> None:
                 print(f"Invalid data type provided: {data}")
                 sys.exit(0)
 
-            batch_data.to(DEVICE, non_blocking=True)
+            batch_data = batch_data.to(DEVICE, non_blocking=True)
             predicted = model(batch_data)
 
             predictions.extend(predicted.to('cpu').numpy())
