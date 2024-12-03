@@ -194,7 +194,7 @@ class PulsarData(Dataset):
         else:
             self.labels = torch.cat((self.labels, torch.empty(num_obs, dtype=int)), dim=0)
 
-def normalize_inplace(tensors, median, std):
+def normalize_inplace(tensors, mean, std):
     r"""Normalizes multiple tensors in-place.
 
     Args:
