@@ -145,7 +145,6 @@ def validate_loop(dataloader: DataLoader,
             truth.extend(labels.to('cpu').numpy())
 
     end_time = time.time()
-    print(f"Elapsed time of validate loop: {end_time - start_time} seconds", flush=True)
 
     # To compute on F1
     pred_np_arr = np.array(predictions)
@@ -157,6 +156,8 @@ def validate_loop(dataloader: DataLoader,
     validation_loss /= num_batches
     correct /= size
     print(f"Validation Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {validation_loss:>8f} \n", flush=True)
+
+    print(f"Elapsed time of validate loop: {end_time - start_time} seconds", flush=True)
 
     return validation_loss
 
