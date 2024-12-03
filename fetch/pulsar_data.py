@@ -173,12 +173,12 @@ class PulsarData(Dataset):
 
         print(f"\nScrubbing data...")
 
-        self.ft_data = torch.cat(self.ft_data, freq_data)
-        self.dt_data = torch.cat(self.dt_data, dm_data)
+        self.ft_data = torch.cat(self.ft_data, freq_data, dim=0)
+        self.dt_data = torch.cat(self.dt_data, dm_data, dim=0)
         
         # Handle the labels if they exist
         if "data_labels" in data:
             print(f"Input file contain labels...adding to PulsarData", flush=True)
-            self.labels = torch.cat(self.labels, data["data_labels"])
+            self.labels = torch.cat(self.labels, data["data_labels"], dim=0)
         else:
             self.labels = torch.cat(self.labels, torch.empty(num_obs, dtype=int))
