@@ -4,6 +4,7 @@ import sys
 import h5py
 
 import torch
+import torch.nn as nn
 from torch.utils.data import Dataset
 import numpy as np
 import scipy.signal as s
@@ -44,9 +45,10 @@ class PulsarData(Dataset):
         dt_dim: tuple = (256, 256),
         n_channels:int = 1,
     ) -> None:
-        r""" A set of pulsar observations
-        A pulsar observation consists of frequency information,
-        dm information, and possibly a label 
+        r""" A set of pulsar observations consisting of
+        1. Frequency information,
+        2. DM information
+        3. Label, pulsar or not (optional)
         ``0`` for not a pulsar
         ``1`` for a pulsar
 
@@ -56,45 +58,23 @@ class PulsarData(Dataset):
             dt_dim: 2D shape of dm data.  Default: 256x256
             n_channels: Number of channels in data. Default: 1
         """
-    
         self.ft_dim = ft_dim
         self.dt_dim = dt_dim
         self.files = files
         self.n_channels = n_channels
 
         self.num_observations = 0
-        self.ft_data = np.empty((0, *self.ft_dim))
-        self.dt_data = np.empty((0, *self.dt_dim))
+        self.ft_data = np.empty((0, *self.ft_dim)) # channels x dim x dim
+        self.dt_data = np.empty((0, *self.dt_dim)) # channels x dim x dim
         self.labels = np.empty(0, dtype=int)
         
         for f in files:
             self._data_from_h5(f)
 
-        # Now clean up the data
-        print(f"Cleaning up data...", flush=True)
-        for idx in range(self.num_observations):
-            freq_obs = self.ft_data[idx]
-            dm_obs = self.dt_data[idx]
-
-            ft_data = np.empty((*self.ft_dim, self.n_channels))
-            dt_data = np.empty((*self.dt_dim, self.n_channels))
-
-            ft_data = s.detrend(np.nan_to_num(np.array(freq_obs, dtype=np.float32).T))
-            ft_data /= np.std(ft_data)
-            ft_data -= np.median(ft_data)
-        
-            dt_data = np.nan_to_num(np.array(dm_obs], dtype=np.float32))
-            dt_data /= np.std(dt_data)
-            dt_data -= np.median(dt_data)
-
-            ft_data = np.reshape(ft_data, (self.n_channels, *self.ft_dim))
-            dt_data = np.reshape(dt_data, (self.n_channels, *self.dt_dim))
-
-            self.ft_data[idx] = ft_data
-            self.dt_data[idx] = dt_data
-
-    # Custom memory pinning method on custom type
     def pin_memory(self):
+        r""" Because it's a custom data type, need this
+         function in order to pin the memory
+         """
         self.ft_data = self.ft_data.pin_memory()
         self.dt_data = self.dt_data.pin_memory()
         self.labels = self.labels.pin_memory()
@@ -140,7 +120,6 @@ class PulsarData(Dataset):
         Args:
             file: The .h5 file containing the freq, dm, and possibly label for pulsar(s)
         """
-
         data = h5py.File(file, 'r')
         if "data_freq_time" not in data:
             print(f"ERROR: {file} does not contain data with name data_freq_data", flush=True)
@@ -151,59 +130,128 @@ class PulsarData(Dataset):
         freq_data = np.array(data["data_freq_time"][:])
         dm_data = np.array(data["data_dm_time"][:])
 
-        # Assuming dm_data shape and size is same as freq_data
-        data_shape = freq_data.shape
-        data_size = len(data_shape)
+        # Do a few basic data checks
+        freq_data_shape = freq_data.shape
+        dm_data_shape = dm_data.shape
+        if freq_data_shape != dm_data_shape:
+            print(f"ERROR: freq data shape({freq_data_shape}) and dm data({dm_data_shape}) shape do not match", flush=True)
+            sys.exit(1)
 
-        # Initialize some variables
-        num_observations = 1
-        data_dims = (shape[0], shape[1])
+        freq_data_size = len(freq_data.shape)
+        dm_data_size = len(dm_data.shape)
+        if freq_data_size != dm_data_size:
+            print(f"ERROR: freq({freq_data_size}) and dm data({dm_data_size}) formats do not match")
+            sys.exit(1)
+
+        num_channels = 1
+        num_obs = 0
+        freq_dims = None
+        dm_dims = None
         
         """ Need to handle different .h5 data size situations
-        Assuming the following situations
+        By assuming the following situations
         
         Size 4: Num observations x dim x dim x channels
-        Size 3: Num observations x dim x dim 
+        Size 3: Check 3rd value in shape
+                - Equals the channel value then dim x dim x channels
+                - Otherwise num observations x dim x dim
         Size 2: dim x dim
+
+        Ultimately want num observations x channel x dim x dim
         """
-        if len(shape) == 4:
-            freq_data = np.reshape(freq_data, (shape[0], shape[1], shape[2]))
-            dm_data = np.reshape(dm_data, (shape[0], shape[1], shape[2]))
-            num_observations = shape[0]
-            data_dims = (shape[1], shape[2])
-            self.n_channels = shape[3]
-        elif ((len(shape) == 3) and (shape[2] <= 3)):
-            freq_data = np.reshape(freq_data, (1, shape[0], shape[1]))
-            dm_data = np.reshape(dm_data, (1, shape[0], shape[1]))
-            self.n_channels = shape[2]
-        elif len(shape) == 3:
-            num_observations = shape[0]
-            data_dims = (shape[1], shape[2])
-        elif len(shape) == 2:
-            freq_data = np.reshape(freq_data, (1, shape[0], shape[1]))
-            dm_data = np.reshape(dm_data, (1, shape[0], shape[1]))
+        if data_size == 4:
+            num_obs = data_shape[0]
+            num_channels = data_shape[3]
+            freq_dims = (data_shape[1], data_shape[2])
+            dm_dims = (dm_data.shape[1], dm_data.shape[2])
+            freq_data = np.reshape(freq_data, (self.n_channels, data_shape[1], data_shape[2]))
+            dm_data = np.reshape(dm_data, (self.n_channels, data_shape[1], data_shape[2]))
+        elif (data_size == 3) and (data_shape[2] == self.n_channels):
+            num_obs = 1
+            num_channels = data_shape[2]
+            freq_dims = (data_shape[0], data_shape[1])
+            dm_dims = (dm_data.shape[0], dm_data.shape[1])
+            freq_data = np.reshape(freq_data, (1, data_shape[0], data_shape[1]))
+            dm_data = np.reshape(dm_data, (1, data_shape[0], data_shape[1]))
+        elif data_size == 3:
+            num_obs = data_shape[0]
+            freq_dims = (data_shape[1], data_shape[2])
+            dm_dims = (dm_data.shape[1], dm_data.shape[2])
+            freq_data = np.reshape(freq_data, (self.n_channels, data_shape[1], data_shape[2]))
+            dm_data = np.reshape(dm_data, (self.n_channels, data_shape[1], data_shape[2]))
+        elif data_size == 2:
+            num_obs = 1
+            freq_dims = (data_shape[0], data_shape[1])
+            dm_dims = (dm_data.shape[0], dm_data.shape[1])
+            freq_data = np.reshape(freq_data, (1, data_shape[0], data_shape[1]))
+            dm_data = np.reshape(dm_data, (1, data_shape[0], data_shape[1]))
         else:
-            print(f"ERROR: {file} contains one or more observations in an unexpected format...{shape}", flush=True)
+            print(f"ERROR: {file} contains one or more observations in an unexpected format...{data_shape}", flush=True)
             sys.exit(1)
 
-        # Make sure the data dimensions are good
-        if data_dims != self.ft_dim:
-            print(f"ERROR: Data shape {data_dims} does not match expected dimensions {self.ft_dim}", flush=True)
+        #  Do a few more basic data checks
+        if num_channels != self.n_channels:
+            print(f"Mismatch in channel information. Data has {num_channels}, expected {self.n_channels}", flush=True)
             sys.exit(1)
 
-        self.num_observations += num_observations
+        if (freq_dims != self.ft_dim) or (dm_dims != self.dt_dim):
+            print(f"ERROR: Data shape mismatch", flush=True)
+            print(f"\tFrequency dimensions: {freq_dims}, expected {self.ft_dim}", flush=True)
+            print(f"\tDM dimensions: {dm_dims}, expected {self.dt_dim}", flush=True)
+            sys.exit(1)
 
-        tmp_ft_data = []
-        tmp_dt_data = []
-
-        for idx in range(num_observations):
-        # Original setup
-        #self.ft_data = np.append(self.ft_data, ft_data, axis=0)
-        #self.dt_data = np.append(self.dt_data, dt_data, axis=0)
+        self.ft_data = np.append(self.ft_data, ft_data, axis=0)
+        self.dt_data = np.append(self.dt_data, dt_data, axis=0)
         
         # Handle the labels if they exist
         if "data_labels" in data:
-            print(f"Input file does contain labels", flush=True)
+            print(f"Input file contain labels...adding to PulsarData", flush=True)
             self.labels = np.append(self.labels, data["data_labels"])
         else:
-            self.labels = np.append(self.labels, np.empty(num_observations, dtype=int))
+            self.labels = np.append(self.labels, np.empty(num_obs, dtype=int))
+
+""" -- AI Code --
+import torch
+import scipy.signal as signal
+
+def detrend_tensor(tensor, axis=-1, type='linear'):
+    
+    return torch.tensor(signal.detrend(tensor.numpy(), axis=axis, type=type))
+
+# Example usage:
+data = torch.randn(100, 5)
+detrended_data = detrend_tensor(data) 
+
+### Manual way ###
+import torch
+
+def linear_detrend(tensor, axis=-1):
+    n = tensor.shape[axis]
+    x = torch.arange(n).to(tensor.device) 
+    x_mean = x.mean()
+    y_mean = tensor.mean(dim=axis, keepdim=True)
+
+    slope = torch.sum((x - x_mean) * (tensor - y_mean), dim=axis, keepdim=True) / torch.sum((x - x_mean) ** 2, dim=axis, keepdim=True)
+    intercept = y_mean - slope * x_mean
+
+    return tensor - slope * x - intercept
+
+# Example usage:
+data = torch.randn(100, 5)
+detrended_data = linear_detrend(data) 
+
+### Third way ###
+import numpy as np
+from scipy import signal
+
+# Create a sample 3D vector
+data = np.random.rand(10, 5, 3)
+
+# Detrend along each axis
+detrended_data = np.zeros_like(data)
+for i in range(data.shape[2]):
+    detrended_data[:, :, i] = signal.detrend(data[:, :, i])
+
+print(detrended_data)
+
+"""
