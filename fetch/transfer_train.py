@@ -138,9 +138,6 @@ def validate_loop(dataloader: DataLoader,
             predicted = (predicted >= prob).float()
             batch_loss = loss_fn(predicted, labels.float())
             validation_loss += batch_loss.item()
-            print(f"\tBatch number: {batch_idx}", flush=True)
-            print(f"\t\tBatch loss: {batch_loss}", flush=True)
-            print(f"\t\tRunning validation loss: {validation_loss}", flush=True)
             correct += (predicted == labels).type(torch.float).sum().item()
 
             # To compute on F1
@@ -155,7 +152,7 @@ def validate_loop(dataloader: DataLoader,
     pred_tensor = torch.tensor(pred_np_arr)
     truth_tensor = torch.tensor(truth)
     f1 = binary_f1_score(pred_tensor, truth_tensor)
-    print(f"\nValidation F1 score: {f1}", flush=True)
+    print(f"\nValidation F1 score: {f1:.5f}", flush=True)
 
     validation_loss /= num_batches
     correct /= size
