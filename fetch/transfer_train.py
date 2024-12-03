@@ -76,7 +76,7 @@ def train_loop(dataloader: DataLoader,
         optimizer.step()
         optimizer.zero_grad()
 
-        if batch % 100 == 0:
+        if batch_idx % 100 == 0:
             loss = loss.item() 
             current = batch_idx * batch_size + len(freq_data)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
