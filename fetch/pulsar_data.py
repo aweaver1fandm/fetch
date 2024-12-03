@@ -143,6 +143,10 @@ class PulsarData(Dataset):
             print(f"ERROR: freq({freq_data_size}) and dm data({dm_data_size}) formats do not match")
             sys.exit(1)
 
+        print(f"DIAGNOSTIC: freq_data shape is {freq_data_shape}", flush=True)
+        print(f"DIAGNOSTIC: dm_data shape is {dm_data_shape}", flush=True)
+        sys.exit(0)
+
         num_channels = 1
         num_obs = 0
         freq_dims = None
@@ -159,7 +163,7 @@ class PulsarData(Dataset):
 
         Ultimately want num observations x channel x dim x dim
         """
-        if data_size == 4:
+        """if freq_data_size == 4:
             num_obs = data_shape[0]
             num_channels = data_shape[3]
             freq_dims = (data_shape[1], data_shape[2])
@@ -187,7 +191,7 @@ class PulsarData(Dataset):
             dm_data = np.reshape(dm_data, (1, data_shape[0], data_shape[1]))
         else:
             print(f"ERROR: {file} contains one or more observations in an unexpected format...{data_shape}", flush=True)
-            sys.exit(1)
+            sys.exit(1)"""
 
         #  Do a few more basic data checks
         if num_channels != self.n_channels:
@@ -209,49 +213,3 @@ class PulsarData(Dataset):
             self.labels = np.append(self.labels, data["data_labels"])
         else:
             self.labels = np.append(self.labels, np.empty(num_obs, dtype=int))
-
-""" -- AI Code --
-import torch
-import scipy.signal as signal
-
-def detrend_tensor(tensor, axis=-1, type='linear'):
-    
-    return torch.tensor(signal.detrend(tensor.numpy(), axis=axis, type=type))
-
-# Example usage:
-data = torch.randn(100, 5)
-detrended_data = detrend_tensor(data) 
-
-### Manual way ###
-import torch
-
-def linear_detrend(tensor, axis=-1):
-    n = tensor.shape[axis]
-    x = torch.arange(n).to(tensor.device) 
-    x_mean = x.mean()
-    y_mean = tensor.mean(dim=axis, keepdim=True)
-
-    slope = torch.sum((x - x_mean) * (tensor - y_mean), dim=axis, keepdim=True) / torch.sum((x - x_mean) ** 2, dim=axis, keepdim=True)
-    intercept = y_mean - slope * x_mean
-
-    return tensor - slope * x - intercept
-
-# Example usage:
-data = torch.randn(100, 5)
-detrended_data = linear_detrend(data) 
-
-### Third way ###
-import numpy as np
-from scipy import signal
-
-# Create a sample 3D vector
-data = np.random.rand(10, 5, 3)
-
-# Detrend along each axis
-detrended_data = np.zeros_like(data)
-for i in range(data.shape[2]):
-    detrended_data[:, :, i] = signal.detrend(data[:, :, i])
-
-print(detrended_data)
-
-"""
