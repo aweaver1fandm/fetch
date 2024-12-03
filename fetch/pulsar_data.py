@@ -64,47 +64,25 @@ class PulsarData(Dataset):
         self.n_channels = n_channels
 
         self.num_observations = 0
-        self.ft_data = np.empty((0, *self.ft_dim)) # channels x dim x dim
-        self.dt_data = np.empty((0, *self.dt_dim)) # channels x dim x dim
-        self.labels = np.empty(0, dtype=int)
+        self.ft_data = torch.empty((0, self.n_channels, *self.ft_dim), pin_memory=True) # NCWH format
+        self.dt_data = torch.empty((0, self.n_channels, *self.dt_dim), pin_memory=True)
+        self.labels = torch.empty(0, dtype=int, pin_memory=True)
         
         for f in files:
             self._data_from_h5(f)
 
-    def pin_memory(self):
-        r""" Because it's a custom data type, need this
-         function in order to pin the memory
-         """
-        self.ft_data = self.ft_data.pin_memory()
-        self.dt_data = self.dt_data.pin_memory()
-        self.labels = self.labels.pin_memory()
+        ## Just for sanity check ##
+        print(f"Freq data {self.ft_data.shape}", flush=True)
+        print(f"DM data {self.dt_data.shape}", flush=True)
+        print(f"Label data {self.labels.shape}", flush=True)
 
-        return self
+        sys.exit(0)
     
     def __len__(self)-> int:
         return self.num_observations
 
     def __getitem__(self, index: int)-> tuple:
-        '''
-        ft_data = np.empty((*self.ft_dim, self.n_channels))
-        dt_data = np.empty((*self.dt_dim, self.n_channels))
-
-        # Do some processing before passing observation to model 
-        ft_data = s.detrend(np.nan_to_num(np.array(self.ft_data[index], dtype=np.float32).T))
-        ft_data /= np.std(ft_data)
-        ft_data -= np.median(ft_data)
-        
-        dt_data = np.nan_to_num(np.array(self.dt_data[index], dtype=np.float32))
-        dt_data /= np.std(dt_data)
-        dt_data -= np.median(dt_data)
-
-        ft_data = np.reshape(ft_data, (self.n_channels, *self.ft_dim))
-        dt_data = np.reshape(dt_data, (self.n_channels, *self.dt_dim))
-
-        # Return data as PyTorch Tensor
-        return torch.from_numpy(ft_data), torch.from_numpy(dt_data), torch.tensor(self.labels[index])'''
-
-        return torch.from_numpy(self.ft_data[index]), torch.from_numpy(self.dt_data[index]), torch.tensor(self.labels[index])
+        return self.ft_data[index], self.dt_data[index], self.labels[index]
         
     def _data_from_h5(self, file: str) -> None:
         r""" Reads a single .h5 file 
@@ -137,19 +115,11 @@ class PulsarData(Dataset):
             print(f"ERROR: freq data shape({freq_data_shape}) and dm data({dm_data_shape}) shape do not match", flush=True)
             sys.exit(1)
 
-        freq_data_size = len(freq_data.shape)
-        dm_data_size = len(dm_data.shape)
-        if freq_data_size != dm_data_size:
+        freq_data_len = len(freq_data.shape)
+        dm_data_len = len(dm_data.shape)
+        if freq_data_len != dm_data_len:
             print(f"ERROR: freq({freq_data_size}) and dm data({dm_data_size}) formats do not match")
             sys.exit(1)
-
-        print(f"DIAGNOSTIC: freq_data shape is {freq_data_shape}", flush=True)
-        print(f"DIAGNOSTIC: dm_data shape is {dm_data_shape}", flush=True)
-
-        num_channels = 1
-        num_obs = 0
-        freq_dims = None
-        dm_dims = None
         
         """ Need to handle different .h5 data size situations
         By assuming the following situations
@@ -157,47 +127,38 @@ class PulsarData(Dataset):
         Size 4: Num observations x dim x dim x channels
         Size 3: Check 3rd value in shape
                 - Equals the channel value then dim x dim x channels
-                - Otherwise num observations x dim x dim
-        Size 2: dim x dim
+                - Otherwise num observations x dim x dim and single channel
+        Size 2: dim x dim and assume single observation single channel
 
-        Ultimately want num observations x channel x dim x dim
+        Ultimately we want standard pytorch tensor format NCWH
         """
-        if freq_data_size == 4:
-            num_obs = freq_data_shape[0]
-            print(f"DIAGNOSTIC: observation count is  {num_obs}", flush=True)
-            num_channels = freq_data_shape[3]
-            print(f"DIAGNOSTIC: Channel count is {num_channels}", flush=True)
-            freq_dims = (freq_data_shape[1], freq_data_shape[2])
-            print(f"DIAGNOSTIC: freq dimensions is {freq_dims}", flush=True)
-            dm_dims = (dm_data_shape[1], dm_data_shape[2])
-            print(f"DIAGNOSTIC: dm dims is {dm_dims}", flush=True)
+        if freq_data_len == 4:
             freq_data = freq_data.permute(0, 3, 1, 2)
-            print(f"DIAGNOSTIC: re-shaped freq_data is {freq_data.shape}", flush=True)
             dm_data = dm_data.permute(0, 3, 1, 2)
-            print(f"DIAGNOSTIC: re-shaped dm_data is {dm_data.shape}", flush=True)
-            sys.exit(0)
-        """elif (data_size == 3) and (data_shape[2] == self.n_channels):
-            num_obs = 1
-            num_channels = data_shape[2]
-            freq_dims = (data_shape[0], data_shape[1])
-            dm_dims = (dm_data.shape[0], dm_data.shape[1])
-            freq_data = np.reshape(freq_data, (1, data_shape[0], data_shape[1]))
-            dm_data = np.reshape(dm_data, (1, data_shape[0], data_shape[1]))
-        elif data_size == 3:
-            num_obs = data_shape[0]
-            freq_dims = (data_shape[1], data_shape[2])
-            dm_dims = (dm_data.shape[1], dm_data.shape[2])
-            freq_data = np.reshape(freq_data, (self.n_channels, data_shape[1], data_shape[2]))
-            dm_data = np.reshape(dm_data, (self.n_channels, data_shape[1], data_shape[2]))
-        elif data_size == 2:
-            num_obs = 1
-            freq_dims = (data_shape[0], data_shape[1])
-            dm_dims = (dm_data.shape[0], dm_data.shape[1])
-            freq_data = np.reshape(freq_data, (1, data_shape[0], data_shape[1]))
-            dm_data = np.reshape(dm_data, (1, data_shape[0], data_shape[1]))
+        elif (freq_data_len == 3) and (freq_data_shape[2] == self.n_channels):
+            freq_data = freq_data.permute(2, 0, 1)
+            freq_data.unsqueeze_(0)
+            dm_data = dm_data.permute(2, 0, 1)
+            dm_data.unsqueeze_(0)
+        elif freq_data_size == 3:
+            freq_dims = (freq_data_shape[1], freq_data_shape[2])
+            dm_dims = (dm_data_shape[1], dm_data_shape[2])
+            freq_data.unsqueeze_(1)
+            dm_data.unsqueeze_(1)
+        elif freq_data_size == 2:
+            freq_data.unsqueeze_(0)
+            freq_data.unsqueeze_(0)
+            dm_data.unsqueeze_(0)
+            dm_data.unsqueeze_(0)
         else:
             print(f"ERROR: {file} contains one or more observations in an unexpected format...{data_shape}", flush=True)
-            sys.exit(1)"""
+            sys.exit(1)
+
+        # All the data should be NCWH format at this point
+        self.num_observations += freq_data.shape[0]
+        num_channels = freq_data.shape[1]
+        freq_dims = (freq_data.shape[2], freq_data.shape[3])
+        dm_dims = (dm_data.shape[2], dm_data.shape[3])
 
         #  Do a few more basic data checks
         if num_channels != self.n_channels:
@@ -205,17 +166,19 @@ class PulsarData(Dataset):
             sys.exit(1)
 
         if (freq_dims != self.ft_dim) or (dm_dims != self.dt_dim):
-            print(f"ERROR: Data shape mismatch", flush=True)
+            print(f"ERROR: Data dimension mismatch", flush=True)
             print(f"\tFrequency dimensions: {freq_dims}, expected {self.ft_dim}", flush=True)
             print(f"\tDM dimensions: {dm_dims}, expected {self.dt_dim}", flush=True)
             sys.exit(1)
 
-        self.ft_data = np.append(self.ft_data, ft_data, axis=0)
-        self.dt_data = np.append(self.dt_data, dt_data, axis=0)
+        print(f"\nScrubbing data...")
+
+        self.ft_data = torch.cat(self.ft_data, freq_data)
+        self.dt_data = torch.cat(self.dt_data, dm_data)
         
         # Handle the labels if they exist
         if "data_labels" in data:
             print(f"Input file contain labels...adding to PulsarData", flush=True)
-            self.labels = np.append(self.labels, data["data_labels"])
+            self.labels = torch.cat(self.labels, data["data_labels"])
         else:
-            self.labels = np.append(self.labels, np.empty(num_obs, dtype=int))
+            self.labels = torch.cat(self.labels, torch.empty(num_obs, dtype=int))
