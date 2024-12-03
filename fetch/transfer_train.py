@@ -204,7 +204,7 @@ def test(dataloader: DataLoader, model: nn.Module, data: str) -> None:
             truth.extend(labels.to('cpu').numpy())
 
     end_time = time.time()
-    print(f"Elapsed time of validate loop: {end_time - start_time} seconds", flush=True)
+    print(f"Elapsed time of test loop: {end_time - start_time} seconds", flush=True)
 
     pred_np_arr = np.array(predictions)
     thresholds = [0.3, 0.4, 0.5, 0.6, 0.7]
