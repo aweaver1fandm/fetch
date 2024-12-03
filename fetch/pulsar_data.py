@@ -145,7 +145,6 @@ class PulsarData(Dataset):
 
         print(f"DIAGNOSTIC: freq_data shape is {freq_data_shape}", flush=True)
         print(f"DIAGNOSTIC: dm_data shape is {dm_data_shape}", flush=True)
-        sys.exit(0)
 
         num_channels = 1
         num_obs = 0
@@ -163,14 +162,21 @@ class PulsarData(Dataset):
 
         Ultimately want num observations x channel x dim x dim
         """
-        """if freq_data_size == 4:
-            num_obs = data_shape[0]
-            num_channels = data_shape[3]
-            freq_dims = (data_shape[1], data_shape[2])
-            dm_dims = (dm_data.shape[1], dm_data.shape[2])
-            freq_data = np.reshape(freq_data, (self.n_channels, data_shape[1], data_shape[2]))
-            dm_data = np.reshape(dm_data, (self.n_channels, data_shape[1], data_shape[2]))
-        elif (data_size == 3) and (data_shape[2] == self.n_channels):
+        if freq_data_size == 4:
+            num_obs = freq_data_shape[0]
+            print(f"DIAGNOSTIC: observation count is  {num_obs}", flush=True)
+            num_channels = freq_data_shape[3]
+            print(f"DIAGNOSTIC: Channel count is {num_channels}", flush=True)
+            freq_dims = (freq_data_shape[1], freq_data_shape[2])
+            print(f"DIAGNOSTIC: freq dimensions is {freq_dims}", flush=True)
+            dm_dims = (dm_data_shape[1], dm_data_shape[2])
+            print(f"DIAGNOSTIC: dm dims is {dm_dims}", flush=True)
+            freq_data = np.reshape(freq_data, (freq_data_shape[3], freq_data_shape[1], freq_data_shape[2]))
+            print(f"DIAGNOSTIC: re-shaped freq_data is {freq_data.shape}", flush=True)
+            dm_data = np.reshape(dm_data, (dm_data_shape[3], dm_data_shape[1], dm_data_shape[2]))
+            print(f"DIAGNOSTIC: re-shaped dm_data is {dm_data.shape}", flush=True)
+            sys.exit(0)
+        """elif (data_size == 3) and (data_shape[2] == self.n_channels):
             num_obs = 1
             num_channels = data_shape[2]
             freq_dims = (data_shape[0], data_shape[1])
