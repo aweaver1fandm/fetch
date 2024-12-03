@@ -171,7 +171,7 @@ class PulsarData(Dataset):
             print(f"DIAGNOSTIC: freq dimensions is {freq_dims}", flush=True)
             dm_dims = (dm_data_shape[1], dm_data_shape[2])
             print(f"DIAGNOSTIC: dm dims is {dm_dims}", flush=True)
-            freq_data = np.reshape(freq_data, (freq_data_shape[3], freq_data_shape[1], freq_data_shape[2]))
+            freq_data = np.reshape(freq_data, (num_obs, num_channels, *freq_dims))
             print(f"DIAGNOSTIC: re-shaped freq_data is {freq_data.shape}", flush=True)
             dm_data = np.reshape(dm_data, (dm_data_shape[3], dm_data_shape[1], dm_data_shape[2]))
             print(f"DIAGNOSTIC: re-shaped dm_data is {dm_data.shape}", flush=True)
