@@ -166,21 +166,21 @@ class PulsarData(Dataset):
             print(f"\tDM dimensions: {dm_dims}, expected {self.dt_dim}", flush=True)
             sys.exit(1)
 
-        print(f"\nScrubbing data...")
+        print(f"\nPre-processing data...", flush=True)
         # Detrend frequency data
         freq_data = torch.tensor(s.detrend(freq_data.numpy(), axis = 2))
         freq_data = torch.tensor(s.detrend(freq_data.numpy(), axis = 3))
 
         # Normalize data
-        flattened_freq = freq_data.flatten()
+        flattened_freq = torch.flatten(freq_data)
         freq_median = flattened_freq.median()
         freq_std = flattened_freq.std()
-        flattened_dm = dm_data.flatten()
+        flattened_dm = torch.flatten(dm_data)
         dm_median = flattened_dm.median()
         dm_std = flattened_dm.std()
 
-        normalize_inplace(freq_data, freq_median, freq_std)
-        normalize_inplace(dm_data, dm_median, dm_std)
+        normalize_inplace(freq_data, [freq_median], [freq_std])
+        normalize_inplace(dm_data, [dm_median], [dm_std])
         
         # Concatenate data
         self.ft_data = torch.cat((self.ft_data, freq_data), dim=0)
