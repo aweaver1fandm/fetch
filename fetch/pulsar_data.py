@@ -172,7 +172,7 @@ class PulsarData(Dataset):
         freq_data = torch.tensor(s.detrend(freq_data.numpy(), axis = 3))
 
         # Normalize data
-        flattend_freq = freq_data.flatten()
+        flattened_freq = freq_data.flatten()
         freq_median = flattened_freq.median()
         freq_std = flattened_freq.std()
         flattened_dm = dm_data.flatten()
