@@ -182,6 +182,7 @@ class PulsarData(Dataset):
         # Handle the labels if they exist
         if "data_labels" in data:
             print(f"Input file contain labels...adding to PulsarData", flush=True)
-            self.labels = torch.cat((self.labels, data["data_labels"]), dim=0)
+            labels = torch.tensor(np.array(data["data_labels"][:]))
+            self.labels = torch.cat((self.labels, labels), dim=0)
         else:
             self.labels = torch.cat((self.labels, torch.empty(num_obs, dtype=int)), dim=0)
