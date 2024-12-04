@@ -82,7 +82,7 @@ def train_loop(dataloader: DataLoader,
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
 
     end_time = time.time()
-    print(f"Elapsed time of single train loop: {end_time - start_time} seconds", flush=True)
+    print(f"\nElapsed time of single train loop: {(end_time - start_time):.2} seconds\n", flush=True)
     
 def validate_loop(dataloader: DataLoader, 
                   model: nn.Module, 
@@ -157,7 +157,7 @@ def validate_loop(dataloader: DataLoader,
     correct /= size
     print(f"Validation Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {validation_loss:>8f} \n", flush=True)
 
-    print(f"Elapsed time of validate loop: {end_time - start_time} seconds", flush=True)
+    print(f"\nElapsed time of validate loop: {(end_time - start_time):.2} seconds\n", flush=True)
 
     return validation_loss
 
@@ -204,7 +204,6 @@ def test(dataloader: DataLoader, model: nn.Module, data: str) -> None:
             truth.extend(labels.to('cpu').numpy())
 
     end_time = time.time()
-    print(f"Elapsed time of test loop: {end_time - start_time} seconds", flush=True)
 
     pred_np_arr = np.array(predictions)
     thresholds = [0.3, 0.4, 0.5, 0.6, 0.7]
@@ -220,6 +219,8 @@ def test(dataloader: DataLoader, model: nn.Module, data: str) -> None:
         print(f"\tRecall: {(100*recall):.2f}%", flush=True)
         print(f"\tPrecision: {(100*precision):.2f}%", flush=True)
         print(f"\tF1: {(100*f1):.2f}%", flush=True)
+
+    print(f"\nElapsed time of test loop: {(end_time - start_time):.2} seconds\n", flush=True)
 
 def main() -> None:
     r""" Entry point for running via command line

@@ -173,10 +173,10 @@ class PulsarData(Dataset):
 
         # Normalize data
         flattened_freq = torch.flatten(freq_data)
-        freq_median = flattened_freq.median()
+        freq_median = flattened_freq.mean()
         freq_std = flattened_freq.std()
         flattened_dm = torch.flatten(dm_data)
-        dm_median = flattened_dm.median()
+        dm_median = flattened_dm.mean()
         dm_std = flattened_dm.std()
 
         normalize_inplace(freq_data, [freq_median], [freq_std])
