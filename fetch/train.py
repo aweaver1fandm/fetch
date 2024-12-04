@@ -3,6 +3,7 @@ import os
 import string
 import glob
 import sys
+import time
 from shutil import copy
 
 import numpy as np
@@ -46,17 +47,19 @@ def train_loop(dataloader: DataLoader,
     # Set the model to training mode - important for batch normalization and dropout layers
     model.train()
 
-    for batch, (freq_data, dm_data, labels) in enumerate(dataloader):
+    start_time = time.time()
+    
+    for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
 
         # Load labels to device
-        labels = labels.to(DEVICE)
+        labels = labels.to(DEVICE, non_blocking=True)
 
         # Add some noise to freq data to help avoid overtraining
         noise = torch.randn_like(freq_data) * .1
         freq_data = freq_data + noise
-        freq_data = freq_data.to(DEVICE)
+        freq_data = freq_data.to(DEVICE, non_blocking=True)
 
-        dm_data = dm_data.to(DEVICE)
+        dm_data = dm_data.to(DEVICE, non_blocking=True)
         pred = model(freq_data, dm_data)
         
         # Compute loss and backpropogate
@@ -65,10 +68,12 @@ def train_loop(dataloader: DataLoader,
         optimizer.step()
         optimizer.zero_grad()
 
-        if batch % 100 == 0:
-            loss, current = loss.item(), batch * batch_size + len(freq_data)
+        if batch_idx % 100 == 0:
+            loss, current = loss.item(), batch_idx * batch_size + len(freq_data)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
-    
+    end_time = time.time()
+    print(f"\nElapsed time of single train loop: {(end_time - start_time):.2f} seconds", flush=True)
+
 def validate_loop(dataloader: DataLoader, 
                   model: nn.Module, 
                   loss_fn: _Loss,
@@ -91,27 +96,49 @@ def validate_loop(dataloader: DataLoader,
     num_batches = len(dataloader)
     validation_loss, correct = 0, 0
 
+    # Used to calculate F1
+    truth = []
+    predictions = []
+
+    start_time = time.time()
+
     # Evaluating the model with torch.no_grad() ensures 
     # that no gradients are computed during validation
     with torch.no_grad():
-        for freq_data, dm_data, labels in dataloader:
+        for batch_idx, (freq_data, dm_data, labels) in dataloader:
 
             # Load labels to device
-            labels = labels.to(DEVICE)
+            labels = labels.to(DEVICE, non_blocking=True)
 
             # Load data to device and make predictions
-            freq_data = freq_data.to(DEVICE)
-            dm_data = dm_data.to(DEVICE)
-            pred = model(freq_data, dm_data)
+            freq_data = freq_data.to(DEVICE, non_blocking=True)
+            dm_data = dm_data.to(DEVICE, non_blocking=True)
+            predicted = model(freq_data, dm_data)
             
             # Convert to either 0 or 1 based on prediction probability
-            pred = (pred >= prob).float()
-            validation_loss += loss_fn(pred, labels.float()).item()
-            correct += (pred  == labels).type(torch.float).sum().item()
+            predicted = (predicted >= prob).float()
+            batch_loss += loss_fn(predicted, labels.float()).item()
+            validation_loss += batch_loss.item()
+            correct += (predicted  == labels).type(torch.float).sum().item()
+
+            # To compute on F1
+            predictions.extend(predicted.to('cpu').numpy())
+            truth.extend(labels.to('cpu').numpy())
+
+    end_time = time.time()
+
+    # To compute on F1
+    pred_np_arr = np.array(predictions)
+    pred_tensor = torch.tensor(pred_np_arr)
+    truth_tensor = torch.tensor(truth)
+    f1 = binary_f1_score(pred_tensor, truth_tensor)
+    print(f"\nValidation F1 score: {f1:.5f}", flush=True)
 
     validation_loss /= num_batches
     correct /= size
     print(f"Validation Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {validation_loss:>8f} \n", flush=True)
+
+    print(f"\nElapsed time of validate loop: {(end_time - start_time):.2f} seconds", flush=True)
 
     return validation_loss
 
@@ -130,21 +157,24 @@ def test(dataloader: DataLoader, model: nn.Module) -> None:
     truth = []
     predictions = []
 
+    start_time = time.time()
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
         for freq_data, dm_data, labels in dataloader:
              
             # Load labels to device
-            labels = labels.to(DEVICE)
+            labels = labels.to(DEVICE, non_blocking=True)
             
             # Load data to device and make predictions
-            freq_data = freq_data.to(DEVICE)
-            dm_data = dm_data.to(DEVICE)
+            freq_data = freq_data.to(DEVICE, non_blocking=True)
+            dm_data = dm_data.to(DEVICE, non_blocking=True)
             pred = model(freq_data, dm_data)
 
             predictions.extend(pred.to('cpu').numpy())
             truth.extend(labels.to('cpu').numpy())
+
+    end_time = time.time()
 
     pred_np_arr = np.array(predictions)
     thresholds = [0.3, 0.4, 0.5, 0.6, 0.7]
@@ -160,6 +190,8 @@ def test(dataloader: DataLoader, model: nn.Module) -> None:
         print(f"\tRecall: {(100*recall):.2f}%", flush=True)
         print(f"\tPrecision: {(100*precision):.2f}%", flush=True)
         print(f"\tF1: {(100*f1):.2f}%", flush=True)
+
+    print(f"\nElapsed time of test loop: {(end_time - start_time):.2f} seconds", flush=True)
 
 def main() -> None:
     r""" Entry point for running via command line
@@ -233,8 +265,8 @@ def main() -> None:
     train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
 
-    tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
-    v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, shuffle=False)
+    tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, pin_memory=True, shuffle=True)
+    v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, pin_memory=True, shuffle=False)
     
     # Train over different hyperparameters of k from 2^5 to 2^9
     k_hyperparameter = [2**5, 2**6, 2**7, 2**8, 2**9]
@@ -244,7 +276,7 @@ def main() -> None:
     best_k = 0
 
     for k in k_hyperparameter:
-        print(f"Training run for k={k}", flush=True)
+        print(f"\nTraining run for k={k}", flush=True)
         
         # Load saved weights for freq model, ignoring classifier layer
         # because we're replacing it with new layer with different num features
@@ -273,12 +305,15 @@ def main() -> None:
         epochs_without_improvement = 0
 
         for t in range(args.epochs):
+            print(f"-------------------------------", flush=True)
             print(f"Epoch {t+1}\n-------------------------------", flush=True)
 
             # Train the model
+            print(f"Training...", flush=True)
             train_loop(tr_dataloader, model, loss_fn, optimizer, args.batch_size)
 
             # Validate the model and track best model perfomance
+            print(f"\nPerforming validation...", flush=True)
             avg_vloss = validate_loop(v_dataloader, model, loss_fn, args.probability)
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
@@ -290,7 +325,7 @@ def main() -> None:
             else:
                 epochs_without_improvement += 1
 
-            print(f"Epoch without improvement count {epochs_without_improvement}", flush=True)
+            print(f"\nEpochs without improvement {epochs_without_improvement}", flush=True)
             if epochs_without_improvement >= args.patience:
                 print("Stopping training early")
                 break
@@ -323,6 +358,6 @@ def main() -> None:
         test_data = PulsarData(files=test_data_files)
         print(f"--- Observation counts for test data ---", flush=True)
         printObsCounts(test_data)
-        tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
+        tst_dataloader = DataLoader(test_data, batch_size=args.batch_size, pin_memory=True, shuffle=False)
         
         test(tst_dataloader, model)
