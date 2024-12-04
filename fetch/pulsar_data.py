@@ -47,7 +47,7 @@ class PulsarData(Dataset):
         dt_dim: tuple = (256, 256),
         n_channels:int = 1,
     ) -> None:
-        r""" A set of pulsar observations consisting of
+        r""" Representation of a set of pulsar observations consisting of
         1. Frequency information,
         2. DM information
         3. Label, pulsar or not (optional)
@@ -166,7 +166,7 @@ class PulsarData(Dataset):
             print(f"\tDM dimensions: {dm_dims}, expected {self.dt_dim}", flush=True)
             sys.exit(1)
 
-        print(f"\nPre-processing data...", flush=True)
+        print(f"\tPre-processing data...", flush=True)
         # Detrend frequency data
         freq_data = torch.tensor(s.detrend(freq_data.numpy(), axis = 2))
         freq_data = torch.tensor(s.detrend(freq_data.numpy(), axis = 3))

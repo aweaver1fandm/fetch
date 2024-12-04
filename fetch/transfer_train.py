@@ -82,7 +82,7 @@ def train_loop(dataloader: DataLoader,
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
 
     end_time = time.time()
-    print(f"\nElapsed time of single train loop: {(end_time - start_time):.2} seconds\n", flush=True)
+    print(f"\nElapsed time of single train loop: {(end_time - start_time):.2f} seconds", flush=True)
     
 def validate_loop(dataloader: DataLoader, 
                   model: nn.Module, 
@@ -155,9 +155,9 @@ def validate_loop(dataloader: DataLoader,
 
     validation_loss /= num_batches
     correct /= size
-    print(f"Validation Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {validation_loss:>8f} \n", flush=True)
+    print(f"Validation Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {validation_loss:>8f}", flush=True)
 
-    print(f"\nElapsed time of validate loop: {(end_time - start_time):.2} seconds\n", flush=True)
+    print(f"\nElapsed time of validate loop: {(end_time - start_time):.2f} seconds", flush=True)
 
     return validation_loss
 
@@ -220,7 +220,7 @@ def test(dataloader: DataLoader, model: nn.Module, data: str) -> None:
         print(f"\tPrecision: {(100*precision):.2f}%", flush=True)
         print(f"\tF1: {(100*f1):.2f}%", flush=True)
 
-    print(f"\nElapsed time of test loop: {(end_time - start_time):.2} seconds\n", flush=True)
+    print(f"\nElapsed time of test loop: {(end_time - start_time):.2f} seconds", flush=True)
 
 def main() -> None:
     r""" Entry point for running via command line
@@ -313,12 +313,15 @@ def main() -> None:
     optimizer = torch.optim.Adam(params=model.parameters(), lr=args.learning_rate)
 
     for t in range(args.epochs):
+        print(f"-------------------------------", flush=True)
         print(f"Epoch {t+1}\n-------------------------------", flush=True)
 
         # Train the model
+        print(f"Training...", flush=True)
         train_loop(tr_dataloader, model, args.data, loss_fn, optimizer, args.batch_size)
 
         # Validate the model and track best model perfomance
+        print(f"\nPerforming validation...", flush=True)
         avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.probability)
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
@@ -328,7 +331,7 @@ def main() -> None:
         else:
             epochs_without_improvement += 1
 
-        print(f"Epoch without improvement count {epochs_without_improvement}", flush=True)
+        print(f"\nEpochs without improvement {epochs_without_improvement}", flush=True)
         if epochs_without_improvement >= args.patience:
             print(f"Stopping training early", flush=True)
             break
@@ -355,12 +358,15 @@ def main() -> None:
         epochs_without_improvement = 0
 
         for t in range(args.epochs):
+            print(f"-------------------------------", flush=True)
             print(f"Epoch {t+1}\n-------------------------------", flush=True)
 
             # Train the model
+            print(f"Training...", flush=True)
             train_loop(tr_dataloader, model, args.data, loss_fn, optimizer, args.batch_size)
 
             # Validate the model and track best model perfomance
+            print(f"\nPerforming validation...", flush=True)
             avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.probability)
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
@@ -372,7 +378,7 @@ def main() -> None:
             else:
                 epochs_without_improvement += 1
 
-            print(f"Epoch without improvement count {epochs_without_improvement}", flush=True)
+            print(f"\nEpochs without improvement count {epochs_without_improvement}", flush=True)
             print(f"Value of consec_layers: {consec_layers}", flush=True)
 
             # As I understsand the training procedure in the paper
