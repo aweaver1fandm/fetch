@@ -105,7 +105,7 @@ def validate_loop(dataloader: DataLoader,
     # Evaluating the model with torch.no_grad() ensures 
     # that no gradients are computed during validation
     with torch.no_grad():
-        for batch_idx, (freq_data, dm_data, labels) in dataloader:
+        for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
 
             # Load labels to device
             labels = labels.to(DEVICE, non_blocking=True)
@@ -161,7 +161,7 @@ def test(dataloader: DataLoader, model: nn.Module) -> None:
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
-        for freq_data, dm_data, labels in dataloader:
+        for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
              
             # Load labels to device
             labels = labels.to(DEVICE, non_blocking=True)
