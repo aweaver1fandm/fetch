@@ -117,7 +117,7 @@ def validate_loop(dataloader: DataLoader,
             
             # Convert to either 0 or 1 based on prediction probability
             predicted = (predicted >= prob).float()
-            batch_loss += loss_fn(predicted, labels.float()).item()
+            batch_loss = loss_fn(predicted, labels.float())
             validation_loss += batch_loss.item()
             correct += (predicted  == labels).type(torch.float).sum().item()
 
