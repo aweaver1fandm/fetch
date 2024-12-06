@@ -12,7 +12,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from fetch.pulsar_data import PulsarData
-from fetch.model import PulsarModel, MODELPARAMS
+from fetch.model import PulsarModel
 
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
