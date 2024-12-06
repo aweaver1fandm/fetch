@@ -135,12 +135,12 @@ class PulsarData(Dataset):
             freq_data.unsqueeze_(0)
             dm_data = dm_data.permute(2, 0, 1)
             dm_data.unsqueeze_(0)
-        elif freq_data_size == 3:
+        elif freq_data_len == 3:
             freq_dims = (freq_data_shape[1], freq_data_shape[2])
             dm_dims = (dm_data_shape[1], dm_data_shape[2])
             freq_data.unsqueeze_(1)
             dm_data.unsqueeze_(1)
-        elif freq_data_size == 2:
+        elif freq_data_len == 2:
             freq_data.unsqueeze_(0)
             freq_data.unsqueeze_(0)
             dm_data.unsqueeze_(0)
