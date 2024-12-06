@@ -160,34 +160,26 @@ class TorchvisionModel(nn.Module):
         return output.squeeze()
 
 class PulsarModel(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-        self.freq_model = TorchvisionModel("DenseNet201", 64)
-        self.dm_model = TorchvisionModel("DenseNet201", 64)
-
-        self.classifier = nn.Sequential(
-            nn.BatchNorm1d(num_features=64, eps=0.001, momentum=0.99),
-            nn.ReLU(),
-            nn.Linear(in_features=64, out_features=1),
-        )
-
-    def __init__(self, freq_module: nn.Module, dm_module: nn.Module, k: int) -> None:
+    def __init__(self, freq_module: nn.Module = None, dm_module: nn.Module = None, k: int = 64) -> None:
         r""" Builds a combined pulsar prediction model using pre-trained freq and dm modules
 
         Args: 
             freq_module: A pre-trained Torchvision model trained on frequency data
             dm_module: A pre-trained Torchvision model trained on dm data
             k: Number of hyperparameters to include in model
+               Default value is 64
             
             Note: This is the k training hyperparamter referred to in the original FETCH paper
         """
         super().__init__()
     
         print(f"Building pulsar model...", flush=True)
-
-        self.freq_model = freq_module
-        self.dm_model = dm_module
+        if freq_module is None:
+            self.freq_module = TorchvisionModel("DenseNet201", k)
+            self.dm_module = TorchvisionModel("DenseNet201", k)
+        else:
+            self.freq_model = freq_module
+            self.dm_model = dm_module
 
         # Final process of combined freq and DM data
         self.classifier = nn.Sequential(
