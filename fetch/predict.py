@@ -41,18 +41,15 @@ def main():
         action='append'
     )
     parser.add_argument(
-        "-w", "--weights", help="Directory containing model weights", required=True
+        "-b", "--batch_size", help="Batch size for making predictions", default=64, type=int
     )
     parser.add_argument(
-        "-m", "--model", help="Index of the model to use", required=True
+        "-w", "--weights", help="Directory containing model weights", required=True
     )
     parser.add_argument(
         "-p", "--probability", help="Detection threshold", default=0.5, type=float
     )
     args = parser.parse_args()
-
-    if args.model not in MODELPARAMS:
-        raise ValueError(f"Model only range from a -- k.")
 
     if args.gpu_id >= 0:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
@@ -60,9 +57,9 @@ def main():
     print(f"Using {DEVICE} for computation", flush=True)
 
     # Get the model and set it to eval mode
-    model = PulsarModel(args.model)
+    model = PulsarModel()
     path = os.path.split(__file__)[0]
-    model.load_state_dict(torch.load(f"{args.weights}/model_{args.model}_weights.pth", weights_only=True))
+    model.load_state_dict(torch.load(f"{args.weights}/DenseNet201_DenseNet201_64.pth", weights_only=True))
     model.eval()
     model.to(DEVICE)
     
@@ -77,21 +74,21 @@ def main():
 
         # Setup the candidate data
         inputs = PulsarData(files=cands_to_eval)
-        dataloader = DataLoader(inputs, shuffle=False)
+        dataloader = DataLoader(inputs, batch_size=args.batch_size, pin_memory=True, shuffle=False)
 
         # Make predictions in batches
         predictions = []
         probs = []
         with torch.no_grad():
-            for freq_data, dm_data, labels in dataloader:
-                freq_data = freq_data.to(DEVICE)
-                dm_data = dm_data.to(DEVICE)
+            for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
+                freq_data = freq_data.to(DEVICE, non_blocking=True)
+                dm_data = dm_data.to(DEVICE, non_blocking=True)
 
-                preds = model(freq_data, dm_data)
+                predicted = model(freq_data, dm_data)
 
-                preds = preds.to('cpu').numpy()
-                probs.extend(preds[:, 1])
-                predictions.extend(np.round(preds[:, 1] >= args.probability))
+                predicted = predicted.to('cpu').numpy()
+                probs.extend(predicted)
+                predictions.extend(np.round(predicted >= args.probability))
 
         # Save the results
         print(f"Saving final results", flush=True)
@@ -100,5 +97,5 @@ def main():
         results_dict["probability"] = probs
         results_dict["label"] = predictions
 
-        results_file = data_dir + f"/results_model_{args.model}.csv"
+        results_file = data_dir + f"/results_full_model.csv"
         pd.DataFrame(results_dict).to_csv(results_file)

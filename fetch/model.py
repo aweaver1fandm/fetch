@@ -160,6 +160,18 @@ class TorchvisionModel(nn.Module):
         return output.squeeze()
 
 class PulsarModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.freq_model = TorchvisionModel("DenseNet201", 64)
+        self.dm_model = TorchvisionModel("DenseNet201", 64)
+
+        self.classifier = nn.Sequential(
+            nn.BatchNorm1d(num_features=64, eps=0.001, momentum=0.99),
+            nn.ReLU(),
+            nn.Linear(in_features=64, out_features=1),
+        )
+
     def __init__(self, freq_module: nn.Module, dm_module: nn.Module, k: int) -> None:
         r""" Builds a combined pulsar prediction model using pre-trained freq and dm modules
 

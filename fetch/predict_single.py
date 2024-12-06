@@ -36,7 +36,7 @@ def main():
         action='append'
     )
     parser.add_argument(
-        "-b", "--batch_size", help="Batch size for tramamaking predictions", default=64, type=int
+        "-b", "--batch_size", help="Batch size for making predictions", default=64, type=int
     )
     parser.add_argument(
         "-w", "--weights", help="Directory containing model weights", required=True
