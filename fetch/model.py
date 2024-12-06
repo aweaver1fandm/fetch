@@ -173,10 +173,9 @@ class PulsarModel(nn.Module):
         """
         super().__init__()
     
-        print(f"Building pulsar model...", flush=True)
         if freq_module is None:
-            self.freq_module = TorchvisionModel("DenseNet201", k)
-            self.dm_module = TorchvisionModel("DenseNet201", k)
+            self.freq_model = TorchvisionModel("DenseNet201", k)
+            self.dm_model = TorchvisionModel("DenseNet201", k)
         else:
             self.freq_model = freq_module
             self.dm_model = dm_module
