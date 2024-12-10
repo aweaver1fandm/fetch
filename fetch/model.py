@@ -11,12 +11,12 @@ __all__= [
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class TorchvisionModel(nn.Module):
+    # TODO: Add other torchvision model parameter sizes as needed
     PARAMS = {"DenseNet121": 1024,
              "DenseNet169": 1664,
              "DenseNet201": 1920,
              "VGG16": 512,
              "VGG19": 512,
-             "Inception_V3": 2048,
     }   
     def __init__(self, model_name: str, out_features: int, unfreeze_layers: int = 0) -> None:
         r""" Creates a model based on a pre-trained Torchvision
@@ -130,30 +130,22 @@ class TorchvisionModel(nn.Module):
             if (name.startswith("model.features")):
                 if (isinstance(module, nn.Conv2d)):
                     count += 1
-                    #module.weight.requires_grad = True
-                    #module.bias.requires_grad = True
                     for param in module.parameters():
                         param.requires_grad = True
                     
                 if (isinstance(module, nn.ReLU)):
-                    #module.weight.requires_grad = True
-                    #module.bias.requires_grad = True
                     for param in module.parameters():
                         param.requires_grad = True
                 if count == unfreeze_layers:
                     return
 
-    def _unfreeze_inception3(self, num_blocks: int) -> None:
-        pass
-
+    # TODO: Add unfreeze functions for other torchvision models
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         output = self.block1(data)
         output = self.model(output)
 
-        # Check if we are using an individual model or not
-        # Training of the indvidual model uses binary cross
-        # entropy with logits which applies Sigmoid.
-        # If we are testing we need to add the sigmoid
+        # Need to manually apply sigmoid if we are not transfer
+        # training individual torchvision model
         if self.out_features == 1 and not(self.model.training):
             output = nn.functional.sigmoid(output)
 
@@ -195,10 +187,7 @@ class PulsarModel(nn.Module):
         output = torch.mul(freq_output, dm_output)
         output = self.classifier(output)
 
-        # Check if we are using an individual model or not
-        # Training of the indvidual model uses binary cross
-        # entropy with logits which applies Sigmoid.
-        # If we are testing we need to add the sigmoid
+        # Need to manually apply sigmoid if we are not training
         if not(self.training):
             output = nn.functional.sigmoid(output)
 

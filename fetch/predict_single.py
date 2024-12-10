@@ -48,7 +48,7 @@ def main():
         "-p", "--probability", help="Detection threshold", default=0.5, type=float
     )
     parser.add_argument(
-        "-d", "--data", help="Type of data being used. Should be freq or dm", default="freq", type=str
+        "-d", "--data", help="Type of data being analyzed. Should be freq or dm", default="freq", type=str
     )
     args = parser.parse_args()
 
