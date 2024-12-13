@@ -70,6 +70,7 @@ class PulsarData(Dataset):
         self.dt_data = torch.empty((0, self.n_channels, *self.dt_dim), pin_memory=True)
         self.labels = torch.empty(0, dtype=int, pin_memory=True)
         
+        print(f" Reading and pre-processing data files...", flush=True)
         for f in files:
             self._data_from_h5(f)
     
@@ -157,7 +158,7 @@ class PulsarData(Dataset):
 
         #  Do a few more basic data checks
         if num_channels != self.n_channels:
-            print(f"Mismatch in channel information. Data has {num_channels}, expected {self.n_channels}", flush=True)
+            print(f"ERROR: Mismatch in channel information. Data has {num_channels}, expected {self.n_channels}", flush=True)
             sys.exit(1)
 
         if (freq_dims != self.ft_dim) or (dm_dims != self.dt_dim):
@@ -166,7 +167,6 @@ class PulsarData(Dataset):
             print(f"\tDM dimensions: {dm_dims}, expected {self.dt_dim}", flush=True)
             sys.exit(1)
 
-        print(f"\tPre-processing data...", flush=True)
         # Detrend frequency data
         freq_data = torch.tensor(s.detrend(freq_data.numpy(), axis = 2))
         freq_data = torch.tensor(s.detrend(freq_data.numpy(), axis = 3))
@@ -188,7 +188,6 @@ class PulsarData(Dataset):
 
         # Handle the labels if they exist
         if "data_labels" in data:
-            print(f"Input file contain labels...adding to PulsarData", flush=True)
             labels = torch.tensor(np.array(data["data_labels"][:]))
             self.labels = torch.cat((self.labels, labels), dim=0)
         else:

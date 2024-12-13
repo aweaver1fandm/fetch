@@ -3,7 +3,6 @@ import os
 import string
 import glob
 import sys
-import time
 from shutil import copy
 
 import numpy as np
@@ -46,8 +45,6 @@ def train_loop(dataloader: DataLoader,
 
     # Set the model to training mode - important for batch normalization and dropout layers
     model.train()
-
-    start_time = time.time()
     
     for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
 
@@ -71,9 +68,7 @@ def train_loop(dataloader: DataLoader,
         if batch_idx % 100 == 0:
             loss, current = loss.item(), batch_idx * batch_size + len(freq_data)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]", flush=True)
-    end_time = time.time()
-    print(f"\nElapsed time of single train loop: {(end_time - start_time):.2f} seconds", flush=True)
-
+    
 def validate_loop(dataloader: DataLoader, 
                   model: nn.Module, 
                   loss_fn: _Loss,
@@ -100,8 +95,6 @@ def validate_loop(dataloader: DataLoader,
     truth = []
     predictions = []
 
-    start_time = time.time()
-
     # Evaluating the model with torch.no_grad() ensures 
     # that no gradients are computed during validation
     with torch.no_grad():
@@ -125,8 +118,6 @@ def validate_loop(dataloader: DataLoader,
             predictions.extend(predicted.to('cpu').numpy())
             truth.extend(labels.to('cpu').numpy())
 
-    end_time = time.time()
-
     # To compute on F1
     pred_np_arr = np.array(predictions)
     pred_tensor = torch.tensor(pred_np_arr)
@@ -137,8 +128,6 @@ def validate_loop(dataloader: DataLoader,
     validation_loss /= num_batches
     correct /= size
     print(f"Validation Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {validation_loss:>8f} \n", flush=True)
-
-    print(f"\nElapsed time of validate loop: {(end_time - start_time):.2f} seconds", flush=True)
 
     return validation_loss
 
@@ -157,7 +146,6 @@ def test(dataloader: DataLoader, model: nn.Module) -> None:
     truth = []
     predictions = []
 
-    start_time = time.time()
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
@@ -174,8 +162,6 @@ def test(dataloader: DataLoader, model: nn.Module) -> None:
             predictions.extend(pred.to('cpu').numpy())
             truth.extend(labels.to('cpu').numpy())
 
-    end_time = time.time()
-
     pred_np_arr = np.array(predictions)
     thresholds = [0.3, 0.4, 0.5, 0.6, 0.7]
     for threshold in thresholds:
@@ -190,8 +176,6 @@ def test(dataloader: DataLoader, model: nn.Module) -> None:
         print(f"\tRecall: {(100*recall):.2f}%", flush=True)
         print(f"\tPrecision: {(100*precision):.2f}%", flush=True)
         print(f"\tF1: {(100*f1):.2f}%", flush=True)
-
-    print(f"\nElapsed time of test loop: {(end_time - start_time):.2f} seconds", flush=True)
 
 def main() -> None:
     r""" Entry point for running via command line
@@ -218,7 +202,7 @@ def main() -> None:
         default=None,
     )
     parser.add_argument(
-        "-b", "--batch_size", help="Batch size for training data", default=32, type=int
+        "-b", "--batch_size", help="Batch size for training data", default=64, type=int
     )
     parser.add_argument(
         "-e", "--epochs", help="Number of epochs for training", default=15, type=int
@@ -226,7 +210,7 @@ def main() -> None:
     parser.add_argument(
         "-o",
         "--output_path",
-        help="Place to save the weights and training logs",
+        help="Place to save the final best weights",
         type=str,
         required=True,
     )
@@ -260,7 +244,6 @@ def main() -> None:
     print(f"Using {DEVICE} for computation", flush=True)
 
     # Load training and split 85% to 15% into train/validate
-    print(f"Loading training/validation data.  This may take some time...", flush=True)
     train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
     train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
@@ -353,7 +336,6 @@ def main() -> None:
         model.load_state_dict(torch.load(best_model_path, weights_only=True))
         model.to(DEVICE)
     
-        print(f"Loading test data.  This may take some time...", flush=True)
         test_data_files = glob.glob(args.test_data_dir + "/*.h*5")
         test_data = PulsarData(files=test_data_files)
         print(f"--- Observation counts for test data ---", flush=True)

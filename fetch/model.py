@@ -140,6 +140,7 @@ class TorchvisionModel(nn.Module):
                     return
 
     # TODO: Add unfreeze functions for other torchvision models
+    
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         output = self.block1(data)
         output = self.model(output)
@@ -180,6 +181,7 @@ class PulsarModel(nn.Module):
         )
 
     def forward(self, freq_input: torch.Tensor, dm_input: torch.Tensor) -> torch.Tensor:
+        # Process freq and dm data separately
         freq_output = self.freq_model(freq_input)
         dm_output = self.dm_model(dm_input)
 

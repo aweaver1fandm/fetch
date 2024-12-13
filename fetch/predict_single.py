@@ -19,7 +19,7 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def main():
     r""" Entry point for running via command line
-    Uses a Torchvision model that has been transfer trained to make predictions
+    Uses a Torchvision model that has been transfer-trained to make predictions
     """
     parser = argparse.ArgumentParser(
         description="Fast Extragalactic Transient Candiate Hunter (FETCH)",
@@ -58,30 +58,30 @@ def main():
     print(f"Using {DEVICE} for computation", flush=True)
     print(f"Using {args.model} for prediction based on {args.data} data", flush=True)
 
-    # Setup the model 
+    # Setup the model for binary classification
     model = TorchvisionModel(args.model, 1)
     path = os.path.split(__file__)[0]
     model.load_state_dict(torch.load(f"{args.weights}/{args.model}_{args.data}.pth", weights_only=True))
     model.eval()
     model.to(DEVICE)
     
+    # Get candidate files
     cands_to_eval = []
     print(f"Processing input data ", flush=True)
     for data_dir in args.data_dir:
 
-        # Get all our candidate files
         cands_to_eval += glob.glob(f"{data_dir}/*h*5")
 
         if len(cands_to_eval) == 0:
             print(f"No candidates to evaluate in directory: {data_dir}", flush=True)
             continue
 
-    # Setup the candidate data
+    # Setup the candidate data for GPU
     inputs = PulsarData(files=cands_to_eval)
-    dataloader = DataLoader(inputs, batch_size=args.batch_size, shuffle=False)
+    dataloader = DataLoader(inputs, batch_size=args.batch_size, pin_memory=True shuffle=False)
 
-    print(f"Making predictions...", flush=True)
     # Make predictions in batches
+    print(f"Making predictions...", flush=True)
     predictions = []
     probs = []
     with torch.no_grad():
@@ -93,18 +93,21 @@ def main():
             labels = labels.to(DEVICE)
 
             # Load data to device and make predictions
+            batch_data = None
             if args.data == "freq":
-                freq_data = freq_data.to(DEVICE)
-                predicted = model(freq_data)
+                batch_data = freq_data
             elif args.data == "dm":
-                dm_data = dm_data.to(DEVICE)
-                predicted = model(dm_data)
+                batch_data = dm_data
+
+            batch_data = batch_data.to(DEVICE, non_blocking=True)
+            predicted = model(batch_data)
                
+            # Get the results from GPU
             predicted = predicted.to('cpu').numpy()
             probs.extend(predicted)
             predictions.extend(np.round(predicted >= args.probability))           
 
-    # Save the results
+    # Save the final predictions
     print(f"Saving final results", flush=True)
     results_dict = {}
     results_dict["candidate"] = cands_to_eval
