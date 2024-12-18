@@ -1,27 +1,30 @@
 # FETCH
 
+This is a `PyTorch` version of FETCH based on the original version found [here]().  There are several key differences
 
-[![issues](https://img.shields.io/github/issues/devanshkv/fetch)](https://github.com/devanshkv/fetch/issues)
-[![forks](https://img.shields.io/github/forks/devanshkv/fetch)](https://github.com/devanshkv/fetch/network/members)
-[![stars](https://img.shields.io/github/stars/devanshkv/fetch)](https://github.com/devanshkv/fetch/stargazers)
-[![GitHub license](https://img.shields.io/github/license/devanshkv/fetch)](https://github.com/devanshkv/fetch/blob/master/LICENSE)
-[![HitCount](http://hits.dwyl.com/devanshkv/fetch.svg)](http://hits.dwyl.com/devanshkv/fetch)
-[![arXiv](https://img.shields.io/badge/arXiv-1902.06343-brightgreen.svg)](https://arxiv.org/abs/1902.06343)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+1. Only DenseNet and VGG models were used for transfer training
+    - These were readily available through TorchVision and most of the original FETCH models were based on these two groups
+    - Torchvision had some but not all of the other models used (e.g. XCeption)
+    - You can add other models as you like by modifying (See the comments in `model.py`)
+2. Only a single final combined model was built
+    - Partly due to using fewer pre-trained models
+    - Partly due to simplifying software usage since it wasn't clear
+    under which data conditions you would choose one model over another
+3. Allows you to do predictions using only frequency or DM data
+    - Testing showed that using only DM data for predictions was very effective (see `train_results.xlxs')
+    - Prediction is done using one of the individaul transfer-trained CNN models
 
+All models here were trained and tested using the original FETCH data available at [astro.phys.wvu.edu/fetch](http://astro.phys.wvu.edu/fetch/).
 
-fetch is Fast Extragalactic Transient Candidate Hunter. It has been detailed in the paper [Towards deeper neural networks for Fast Radio Burst detection](https://arxiv.org/abs/1902.06343).
-
-This is the `tensorflow>=2` version of the fetch, if you are looking for the older tensorflow version click [here](https://github.com/devanshkv/fetch/archive/0.1.8.tar.gz).
 
 Install 
 ---
+Code:
     git clone https://github.com/devanshkv/fetch.git
     cd fetch
-    pip install -r requirements.txt
-    python setup.py install
+    python -m pip install .
 
-The installation will put `predict.py` and `train.py` in your `PYTHONPATH`.
+Models should be dowloaded here
 
 Usage
 ---
