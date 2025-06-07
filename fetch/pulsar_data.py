@@ -114,7 +114,7 @@ class PulsarData(Dataset):
         freq_data_len = len(freq_data.shape)
         dm_data_len = len(dm_data.shape)
         if freq_data_len != dm_data_len:
-            print(f"ERROR: freq({freq_data_size}) and dm data({dm_data_size}) formats do not match")
+            print(f"ERROR: freq({freq_data_len}) and dm data({dm_data_len}) formats do not match")
             sys.exit(1)
         
         """ Need to handle different .h5 data size situations
@@ -147,7 +147,7 @@ class PulsarData(Dataset):
             dm_data.unsqueeze_(0)
             dm_data.unsqueeze_(0)
         else:
-            print(f"ERROR: {file} contains one or more observations in an unexpected format...{data_shape}", flush=True)
+            print(f"ERROR: {file} contains one or more observations in an unexpected format...{freq_data_len}", flush=True)
             sys.exit(1)
 
         # All the data should be NCWH format at this point

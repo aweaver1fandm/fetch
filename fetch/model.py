@@ -18,6 +18,7 @@ class TorchvisionModel(nn.Module):
              "VGG16": 512,
              "VGG19": 512,
     }   
+    
     def __init__(self, model_name: str, out_features: int, unfreeze_layers: int = 0) -> None:
         r""" Creates a model based on a pre-trained Torchvision
         model like DenseNet121
@@ -54,6 +55,7 @@ class TorchvisionModel(nn.Module):
         for param in self.model.parameters():
             param.requires_grad = False
 
+        # TODO: Add code to unfreeze layers in other models
         if self.model_name.startswith("DenseNet"):
             self._unfreeze_densenet(unfreeze_layers)
         elif self.model_name.startswith("VGG"):

@@ -30,7 +30,7 @@ def main():
     parser.add_argument(
         "-c",
         "--data_dir",
-        help="Directory with candidate h5s.",
+        help="Directory with candidate h5s files.",
         required=True,
         type=str,
         action='append'

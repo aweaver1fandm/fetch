@@ -23,6 +23,124 @@ from fetch.model import TorchvisionModel
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
+
+def train_individual(args,
+                     data,
+                     tr_dataloader, 
+                     v_dataloader, 
+                     model_name):
+    r"""Performs transfer training for a model using either freq or dm data
+
+    Args:
+        args: Arguments from the original code invocation
+        data: Type of data, either freq or DM
+        tr_dataloader: Batches of  training data
+        v_dataloader: Batches of validation data
+        model_name: The model being used
+    """
+
+    best_model_path = ""
+    best_vloss = float('inf')
+    best_unfrozen = 0
+
+    print(f"**** Initial training with all layers frozen ****", flush=True)
+    epochs_without_improvement = 0
+
+    # Setup model
+    model = TorchvisionModel(model_name, 1, 0).to(DEVICE)
+
+    # Setup training parameters
+    loss_fn = nn.BCEWithLogitsLoss()
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=args.learning_rate)
+
+    for t in range(args.epochs):
+        print(f"-------------------------------", flush=True)
+        print(f"Epoch {t+1}\n-------------------------------", flush=True)
+
+        # Train the model
+        print(f"Training...", flush=True)
+        train_loop(tr_dataloader, model, data, loss_fn, optimizer, args.batch_size)
+
+        # Validate the model and track best model perfomance
+        print(f"\nPerforming validation...", flush=True)
+        avg_vloss = validate_loop(v_dataloader, model, data, loss_fn, args.probability)
+        if avg_vloss < best_vloss:
+            best_vloss = avg_vloss
+            best_model_path = f"model_{0}_{model_name}_{data}_epoch{t+1}.pth"
+            torch.save(model.state_dict(), best_model_path)
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+
+        print(f"\nEpochs without improvement {epochs_without_improvement}", flush=True)
+        if epochs_without_improvement >= args.patience:
+            print(f"Stopping training early", flush=True)
+            break
+
+    # Number of unfrozen layers
+    n = 0 
+
+    # Number of consecutive layers unfrozen without improvement
+    consec_layers = 0 
+
+    while consec_layers < 3:
+        # Increment unfrozen count
+        n += 1
+        print(f"**** Training model with {n} unfrozen layers ****", flush=True)
+
+        # Setup model
+        model = TorchvisionModel(model_name, 1, n).to(DEVICE)
+
+        # Setup training parameters
+        loss_fn = nn.BCEWithLogitsLoss()
+        optimizer = torch.optim.Adam(params=model.parameters(), lr=args.learning_rate)
+
+        # Start of training/validation
+        epochs_without_improvement = 0
+
+        for t in range(args.epochs):
+            print(f"-------------------------------", flush=True)
+            print(f"Epoch {t+1}\n-------------------------------", flush=True)
+
+            # Train the model
+            print(f"Training...", flush=True)
+            train_loop(tr_dataloader, model, args.data, loss_fn, optimizer, args.batch_size)
+
+            # Validate the model and track best model perfomance
+            print(f"\nPerforming validation...", flush=True)
+            avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.probability)
+            if avg_vloss < best_vloss:
+                best_vloss = avg_vloss
+                best_unfrozen = n
+                best_model_path = f"model_{n}_{model_name}_{args.data}_epoch{t+1}.pth"
+                torch.save(model.state_dict(), best_model_path)
+                epochs_without_improvement = 0
+                consec_layers = 0
+            else:
+                epochs_without_improvement += 1
+
+            print(f"\nEpochs without improvement count {epochs_without_improvement}", flush=True)
+            print(f"Value of consec_layers: {consec_layers}", flush=True)
+
+            # As I understsand the training procedure in the paper
+            # Essentially need to go 3 consecutive unfrozen layers
+            # with no improvement in validation loss.
+            # Specifically three consecutive layers where no improvement
+            # in first 3 epochs for each layer
+            if epochs_without_improvement >= args.patience:
+                # Possibly increase consec layers without improvement
+                if t == 2:
+                    consec_layers += 1
+                print(f"Stopping training early", flush=True)
+                break
+
+    print(f"-- FINAL TRAINING RESULS --")
+    print(f"\n\tBest validation loss: {best_vloss}", flush=True)
+    print(f"\tUnfrozen layers with best validation loss: {best_unfrozen}\n\n", flush = True)
+
+    # Save the final best model to output dir
+    outfile = f"{args.output_path}/{data}/{model_name}_{best_unfrozen}.pth"
+    copy(best_model_path, outfile)
     
 def train_loop(dataloader: DataLoader, 
                model: nn.Module,
@@ -36,7 +154,7 @@ def train_loop(dataloader: DataLoader,
     Args:
         dataloader: Contains batches of data
         model: The model being used
-        data: The type of data being used for training freq or dm
+        data: The type of data being used for training freq, dm, or both
         loss_fn: Loss function used for training
         optimizer: Optimization being used for training
         batch_size: Number of data points per batch
@@ -54,17 +172,24 @@ def train_loop(dataloader: DataLoader,
         labels = labels.to(DEVICE, non_blocking=True)
 
         # Add some noise to freq data to help avoid overtraining
-        if data == "freq":
+        # And load data on GPU
+        if data == "freq" or data == "both":
             noise = torch.randn_like(freq_data) * .1
-            batch_data = freq_data + noise
-        elif data == "dm":
-            batch_data = dm_data
+            freq_data = freq_data + noise
+            freq_data = freq_data.to(DEVICE, non_blocking=True)
+        elif data == "dm" or data == "both":
+            dm_data = dm_data.to(DEVICE, non_blocking=True)
         else:
             print(f"Invalid data type provided: {data}", flush=True)
             sys.exit(0)
 
-        batch_data = batch_data.to(DEVICE, non_blocking=True)
-        predicted = model(batch_data)
+        predicted = None
+        if data == "freq":
+            predicted = model(freq_data)
+        elif data == "dm":
+            predicted = model(dm_data)
+        else:
+            predicted = model(freq_data, dm_data)
 
         # Compute loss and backpropogate
         loss = loss_fn(predicted, labels.float())
@@ -88,7 +213,7 @@ def validate_loop(dataloader: DataLoader,
     Args:
         dataloader: Contains batches of data
         model: The model being used
-        data: The type of data being used for training freq or dm
+        data: The type of data being used for training freq, dm, or both
         loss_fn: Loss function used for training
         prob: Probability criteria to determine if observation is pulsar or not
     
@@ -114,17 +239,21 @@ def validate_loop(dataloader: DataLoader,
             # Load labels to device
             labels = labels.to(DEVICE, non_blocking=True)
 
-            # Load data to device and make predictions
+            # Move data to GPU and make predictions
+            predicted = None
             if data == "freq":
-                batch_data = freq_data
+                freq_data = freq_data.to(DEVICE, non_blocking=True)
+                predicted = model(freq_data)
             elif data == "dm":
-                batch_data = dm_data
+                dm_data = dm_data.to(DEVICE, non_blocking=True)
+                predicted = model(dm_data)
+            elif data == "both":
+                freq_data = freq_data.to(DEVICE, non_blocking=True)
+                dm_data = dm_data.to(DEVICE, non_blocking=True)
+                predicted = model(freq_data, dm_data)
             else:
-                print(f"Invalid data type provided: {data}")
+                print(f"Invalid data type provided: {data}", flush=True)
                 sys.exit(0)
-
-            batch_data = batch_data.to(DEVICE, non_blocking=True)
-            predicted = model(batch_data)
 
             # Convert to either 0 or 1 based on prediction probability
             predicted = (predicted >= prob).float()
@@ -132,11 +261,11 @@ def validate_loop(dataloader: DataLoader,
             validation_loss += batch_loss.item()
             correct += (predicted == labels).type(torch.float).sum().item()
 
-            # To compute on F1
+            # Move results to CPU for further calculation
             predictions.extend(predicted.to('cpu').numpy())
             truth.extend(labels.to('cpu').numpy())
 
-    # To compute on F1
+    # Compute on F1
     pred_np_arr = np.array(predictions)
     pred_tensor = torch.tensor(pred_np_arr)
     truth_tensor = torch.tensor(truth)
@@ -156,7 +285,7 @@ def test(dataloader: DataLoader, model: nn.Module, data: str) -> None:
     Args:
         dataloader: Contains batches of data
         model: The model being used
-        data: The data being used, either freq or dm
+        data: The data being used, freq, dm, or both
     """
 
     # Set the model to evaluation mode - important for batch normalization and dropout layers
@@ -175,18 +304,23 @@ def test(dataloader: DataLoader, model: nn.Module, data: str) -> None:
             # Load labels to device
             labels = labels.to(DEVICE, non_blocking=True)
             
-            # Load data to device and make predictions
+            # Load data to GPU and make predictions
+            predicted = None
             if data == "freq":
-                batch_data = freq_data
+                freq_data = freq_data.to(DEVICE, non_blocking=True)
+                predicted = model(freq_data)
             elif data == "dm":
-                batch_data = dm_data
+                dm_data = dm_data.to(DEVICE, non_blocking=True)
+                predicted = model(dm_data)
+            elif data == "both":
+                freq_data = freq_data.to(DEVICE, non_blocking=True)
+                dm_data = dm_data.to(DEVICE, non_blocking=True)
+                predicted = model(freq_data, dm_data)
             else:
-                print(f"Invalid data type provided: {data}")
+                print(f"Invalid data type provided: {data}", flush=True)
                 sys.exit(0)
 
-            batch_data = batch_data.to(DEVICE, non_blocking=True)
-            predicted = model(batch_data)
-
+            # Move results to CPU for further calculations
             predictions.extend(predicted.to('cpu').numpy())
             truth.extend(labels.to('cpu').numpy())
 
@@ -239,12 +373,10 @@ def main() -> None:
     parser.add_argument(
         "-o",
         "--output_path",
-        help="Place to save the final best weights ",
+        help="Base directory to where trained models will be saved.\n \
+             Models will be saved in subdirectories based on data type",
         type=str,
         required=True,
-    )
-    parser.add_argument(
-        "-m", "--model", help="Name of the model to train", required=True, type=str
     )
     parser.add_argument(
         "-lr", "--learning_rate", help="Training learning rate", default=1e-3, type=float
@@ -256,136 +388,69 @@ def main() -> None:
         "-pa", "--patience", help="Num epochs with no improvement after which training will be stopped", default=3, type=int
     )
     parser.add_argument(
-        "-d", "--data", help="Type of data being used. Should be freq or dm", default="freq", type=str
+        "-fm", "--freq_model", help="Freq data processing model", type=str, default=None
+    )
+    parser.add_argument(
+        "-dm", "--dm_model", help="DM data processing model", type=str, default=None
+    )
+    parser.add_argument(
+        "-uf", "--unfrozen_freq", help="Num layers to unfreeze in freq model", type=int
+    )
+    parser.add_argument(
+        "-ud", "--unfrozen_dm", help="Num layers to unfreeze in dm model", type=int
     )
 
     args = parser.parse_args()
 
+    # Some basic error checking
+    print(f"Using {DEVICE} for computation", flush=True)
     if args.gpu_id:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
 
-    print(f"Using {DEVICE} for computation", flush=True)
-
-    if args.data not in ["freq", "dm"]:
-        print(f"Invalid data type {args.data}.  Should be freq or dm")
+    if (args.freq_model is None) and (args.dm_model is None):
+        print(f"No model chosen.  At least one model must be specified via -fm or -dm")
         sys.exit(0)
+    elif (args.freq_model is not None) and 
+         (args.freq_model not in TorchvisionModel.PARAMS):
+        print(f"Invalid model chosen to process freq data {args.freq_model}")
+        sys.exit(0)
+    elif (args.dm_model is not None) and 
+         (args.dm_model not in TorchvisionModel.PARAMS):
+        print(f"Invalid model chosen to process dm data {args.dm_model}")
+        sys.exit(0)
+
+    # Figure out the data and model situation
+    data = None
+    model = None
+    if (args.freq_model) and (not args.dm_model):
+        data = "freq"
+        model = args.freq_model
+    elif (not args.freq_model) and (args.dm_model):
+        data = "dm"
+        model = args.dm_model
     else:
-        print(f"Using {args.data} data", flush=True)
-    
-    # Load training and split 85% to 15% into train/validate
+        data = "both"
+        model = f"{args.freq_model}_{args.dm_model}"
+   
+    # Read training and split 85% to 15% into train/validate
     train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
     train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
-
-    tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, pin_memory=True, shuffle=True)
-    v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, pin_memory=True, shuffle=False)
-
-    best_model_path = ""
-    best_vloss = float('inf')
-    best_unfrozen = 0
-
-    print(f"**** Initial training with all layers frozen ****", flush=True)
-    epochs_without_improvement = 0
-
-    # Setup model
-    model = TorchvisionModel(args.model, 1, 0).to(DEVICE)
-
-    # Setup training parameters
-    loss_fn = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=args.learning_rate)
-
-    for t in range(args.epochs):
-        print(f"-------------------------------", flush=True)
-        print(f"Epoch {t+1}\n-------------------------------", flush=True)
-
-        # Train the model
-        print(f"Training...", flush=True)
-        train_loop(tr_dataloader, model, args.data, loss_fn, optimizer, args.batch_size)
-
-        # Validate the model and track best model perfomance
-        print(f"\nPerforming validation...", flush=True)
-        avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.probability)
-        if avg_vloss < best_vloss:
-            best_vloss = avg_vloss
-            best_model_path = f"model_{0}_{args.model}_{args.data}_epoch{t+1}.pth"
-            torch.save(model.state_dict(), best_model_path)
-            epochs_without_improvement = 0
-        else:
-            epochs_without_improvement += 1
-
-        print(f"\nEpochs without improvement {epochs_without_improvement}", flush=True)
-        if epochs_without_improvement >= args.patience:
-            print(f"Stopping training early", flush=True)
-            break
-
-    # Number of unfrozen layers
-    n = 0 
-
-    # Number of consecutive layers unfrozen without improvement
-    consec_layers = 0 
-
-    while consec_layers < 3:
-        # Increment unfrozen count
-        n += 1
-        print(f"**** Training model with {n} unfrozen layers ****", flush=True)
-
-        # Setup model
-        model = TorchvisionModel(args.model, 1, n).to(DEVICE)
-
-        # Setup training parameters
-        loss_fn = nn.BCEWithLogitsLoss()
-        optimizer = torch.optim.Adam(params=model.parameters(), lr=args.learning_rate)
-
-        # Start of training/validation
-        epochs_without_improvement = 0
-
-        for t in range(args.epochs):
-            print(f"-------------------------------", flush=True)
-            print(f"Epoch {t+1}\n-------------------------------", flush=True)
-
-            # Train the model
-            print(f"Training...", flush=True)
-            train_loop(tr_dataloader, model, args.data, loss_fn, optimizer, args.batch_size)
-
-            # Validate the model and track best model perfomance
-            print(f"\nPerforming validation...", flush=True)
-            avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.probability)
-            if avg_vloss < best_vloss:
-                best_vloss = avg_vloss
-                best_unfrozen = n
-                best_model_path = f"model_{n}_{args.model}_{args.data}_epoch{t+1}.pth"
-                torch.save(model.state_dict(), best_model_path)
-                epochs_without_improvement = 0
-                consec_layers = 0
-            else:
-                epochs_without_improvement += 1
-
-            print(f"\nEpochs without improvement count {epochs_without_improvement}", flush=True)
-            print(f"Value of consec_layers: {consec_layers}", flush=True)
-
-            # As I understsand the training procedure in the paper
-            # Essentially need to go 3 consecutive unfrozen layers
-            # with no improvement in validation loss.
-            # Specifically three consecutive layers where no improvement
-            # in first 3 epochs for each layer
-            if epochs_without_improvement >= args.patience:
-                # Possibly increase consec layers without improvement
-                if t == 2:
-                    consec_layers += 1
-                print(f"Stopping training early", flush=True)
-                break
-
-    print(f"\n--- TRAINING SUMMARY ---", flush=True)
+    print(f"Using {data} data for training", flush=True)
+    print(f"\n--- TRAINING  DATA SUMMARY ---", flush=True)
     print(f"\t--- Observation counts for training data ---", flush=True)
     printObsCounts(train_data)
     print(f"\n\t--- Observation counts for validation data ---", flush=True)
     printObsCounts(validate_data)
-    print(f"\n\tBest validation loss: {best_vloss}", flush=True)
-    print(f"\tUnfrozen layers with best validation loss: {best_unfrozen}\n\n", flush = True)
 
-    # Save the final best model based on train/validation to output dir
-    outfile = f"{args.output_path}/{args.model}_{args.data}.pth"
-    copy(best_model_path, outfile)
+    # Create batches of data and train
+    tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, pin_memory=True, shuffle=True)
+    v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, pin_memory=True, shuffle=False)
+
+    if data != "both":
+        train_individual(args, tr_dataloader, v_dataloader, model)
+    else:
+        train_combined(args, tr_dataloader, v_dataloader, model)
 
     # Test model
     tst_dataloader = None
