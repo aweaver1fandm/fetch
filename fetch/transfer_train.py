@@ -17,7 +17,7 @@ from torchvision import datasets
 from torcheval.metrics.functional import binary_precision, binary_recall, binary_f1_score
 
 from fetch.pulsar_data import PulsarData, printObsCounts
-from fetch.model import TorchvisionModel
+from fetch.model import PulsarModel, TorchvisionModel
 
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -25,10 +25,10 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 def train_individual(args,
-                     data,
-                     tr_dataloader, 
-                     v_dataloader, 
-                     model_name):
+                     data: str,
+                     tr_dataloader: DataLoader, 
+                     v_dataloader: DataLoader, 
+                     model_name: str) -> None:
     r"""Performs transfer training for a model using either freq or dm data
 
     Args:
@@ -134,12 +134,100 @@ def train_individual(args,
                 print(f"Stopping training early", flush=True)
                 break
 
-    print(f"-- FINAL TRAINING RESULS --")
+    print(f"\n--- FINAL TRAINING RESULtS ---")
     print(f"\n\tBest validation loss: {best_vloss}", flush=True)
     print(f"\tUnfrozen layers with best validation loss: {best_unfrozen}\n\n", flush = True)
 
     # Save the final best model to output dir
     outfile = f"{args.output_path}/{data}/{model_name}_{best_unfrozen}.pth"
+    copy(best_model_path, outfile)
+
+def train_combined(args,
+                   tr_dataloader: DataLoader, 
+                   v_dataloader: DataLoader, 
+                   model_name: str) -> None:
+    r"""Performs training for a combined model using both freq and dm data
+        Assumes that the freq and dm models have already been transfer trained
+
+    Args:
+        args: Arguments from the original code invocation
+        data: Type of data, either freq or DM
+        tr_dataloader: Batches of  training data
+        v_dataloader: Batches of validation data
+        model_name: The model being used
+    """
+    
+    # Train over different hyperparameters of k from 2^5 to 2^9
+    k_hyperparameter = [2**5, 2**6, 2**7, 2**8, 2**9]
+
+    # Figure out the freq and dm models to use
+    freq_model_name, dm_model_name = model_name.split("_")
+
+    best_model_path = ""
+    best_vloss = float('inf')
+    best_k = 0
+
+    for k in k_hyperparameter:
+        print(f"\nTraining run for k={k}", flush=True)
+        
+        # Load saved weights for freq model, ignoring classifier layer
+        # because we're replacing it with new layer with different num features
+        freq_model = TorchvisionModel(freq_model_name, k, args.unfrozen_freq)
+        freq_model_path = f"model_weights/{args.freq_model}_freq.pth"
+        state_dict = torch.load(freq_model_path, weights_only=True)
+        new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("model.classifier")}
+        freq_model.load_state_dict(new_state_dict, strict=False)
+
+        # Load saved weights for freq model, ignoring classifier layer
+        # because we're replacing it with new layer with different num features
+        dm_model = TorchvisionModel(dm_model_name, k, args.unfrozen_dm)
+        dm_model_path = f"model_weights/{args.dm_model}_dm.pth"
+        state_dict = torch.load(dm_model_path, weights_only=True)
+        new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("model.classifier")}
+        dm_model.load_state_dict(new_state_dict, strict=False)
+
+        # Setup combined model
+        model = PulsarModel(freq_model, dm_model, k).to(DEVICE)
+
+        # Setup training parameters
+        loss_fn = nn.BCEWithLogitsLoss()
+        optimizer = torch.optim.Adam(params=model.parameters(), lr=args.learning_rate)
+
+        # Start of training/validation
+        epochs_without_improvement = 0
+
+        for t in range(args.epochs):
+            print(f"-------------------------------", flush=True)
+            print(f"Epoch {t+1}\n-------------------------------", flush=True)
+
+            # Train the model
+            print(f"Training...", flush=True)
+            train_loop(tr_dataloader, model, loss_fn, optimizer, args.batch_size)
+
+            # Validate the model and track best model perfomance
+            print(f"\nPerforming validation...", flush=True)
+            avg_vloss = validate_loop(v_dataloader, model, loss_fn, args.probability)
+            if avg_vloss < best_vloss:
+                best_vloss = avg_vloss
+                best_k = k
+                model_path = f"model_{args.freq_model}_{args.dm_model}_{k}_epoch{t+1}.pth"
+                best_model_path = model_path
+                torch.save(model.state_dict(), model_path)
+                epochs_without_improvement = 0
+            else:
+                epochs_without_improvement += 1
+
+            print(f"\nEpochs without improvement {epochs_without_improvement}", flush=True)
+            if epochs_without_improvement >= args.patience:
+                print("Stopping training early")
+                break
+
+    print(f"\n--- FINAL TRAINING RESULTS ---", flush=True)
+    print(f"\n\tBest validation loss: {best_vloss}", flush=True)
+    print(f"\tBest hyperparameter: {best_k}\n\n", flush = True)
+
+    # Save the final best model based on train/validation to output dir
+    outfile = f"{args.output_path}/{args.freq_model}_{args.dm_model}_{best_k}.pth"
     copy(best_model_path, outfile)
     
 def train_loop(dataloader: DataLoader, 
