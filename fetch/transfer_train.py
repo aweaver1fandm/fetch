@@ -24,11 +24,11 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
-def train_individual(args,
-                     data: str,
-                     tr_dataloader: DataLoader, 
-                     v_dataloader: DataLoader, 
-                     model_name: str) -> None:
+def train_single_model(args,
+                       data: str,
+                       tr_dataloader: DataLoader, 
+                       v_dataloader: DataLoader, 
+                       model_name: str) -> None:
     r"""Performs transfer training for a model using either freq or dm data
 
     Args:
@@ -39,7 +39,8 @@ def train_individual(args,
         model_name: The model being used
     """
 
-    best_model_path = ""
+    # Initialize some variables
+    best_model = ""
     best_vloss = float('inf')
     best_unfrozen = 0
 
@@ -57,7 +58,7 @@ def train_individual(args,
         print(f"-------------------------------", flush=True)
         print(f"Epoch {t+1}\n-------------------------------", flush=True)
 
-        # Train the model
+        # Do a training pass
         print(f"Training...", flush=True)
         train_loop(tr_dataloader, model, data, loss_fn, optimizer, args.batch_size)
 
@@ -66,8 +67,8 @@ def train_individual(args,
         avg_vloss = validate_loop(v_dataloader, model, data, loss_fn, args.probability)
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
-            best_model_path = f"model_{0}_{model_name}_{data}_epoch{t+1}.pth"
-            torch.save(model.state_dict(), best_model_path)
+            best_model = f"{model_name}_{data}_epoch{t+1}.pth"
+            torch.save(model.state_dict(), os.join(args.temp_dir, best_model))
             epochs_without_improvement = 0
         else:
             epochs_without_improvement += 1
@@ -112,8 +113,8 @@ def train_individual(args,
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
                 best_unfrozen = n
-                best_model_path = f"model_{n}_{model_name}_{args.data}_epoch{t+1}.pth"
-                torch.save(model.state_dict(), best_model_path)
+                best_model = f"{model_name}_{data}_{n}_epoch{t+1}.pth"
+                torch.save(model.state_dict(), os.join(args.temp_dir, best_model))
                 epochs_without_improvement = 0
                 consec_layers = 0
             else:
@@ -460,17 +461,24 @@ def main() -> None:
     )
     parser.add_argument(
         "-o",
-        "--output_path",
-        help="Base directory to where trained models will be saved.\n \
-             Models will be saved in subdirectories based on data type",
+        "--output_dir",
+        help="Base directory where trained models will be saved\n \
+              Models will be saved in freq, dm, combined subdirectories based on data type\n \
+              If not specified, it will default to current directory.",
         type=str,
-        required=True,
+        default=None,
+    )
+    parser.add_argument(
+        "-tmp",
+        "--temp_dir",
+        help="Directory to write temporary model files to during training\n \
+              Files in this directory will be removed after training is complete\n \
+              If not specified it will default to the current directory",
+        type=str,
+        default=None,
     )
     parser.add_argument(
         "-lr", "--learning_rate", help="Training learning rate", default=1e-3, type=float
-    )
-    parser.add_argument(
-        "-pr", "--probability", help="Detection threshold", default=0.5, type=float
     )
     parser.add_argument(
         "-pa", "--patience", help="Num epochs with no improvement after which training will be stopped", default=3, type=int
@@ -490,24 +498,54 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Some basic error checking
+    
     print(f"Using {DEVICE} for computation", flush=True)
     if args.gpu_id:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
 
+    # Make sure temp and output directories exist
+    if args.temp_dir is None:
+        args.temp_dir = os.getcwd()
+    elif not os.path.isdir(args.temp_dir):
+        print(f"Temp directory {args.temp_dir} is not a directory")
+        sys.exit(0)
+
+    if args.output_dir is None:
+        args.output_dir = os.getcwd()
+    elif not os.path.isdir(args.output_dir):
+        print(f"Output directory {args.output_dir} is not a directory")
+        sys.exit(0)
+    else:
+        # Create the subdirectories to hold the final trained models
+        # Based on the data they are trained on
+        # If they already exist, no problem
+        try:
+            os.makedir(os.path.join(args.output_dir, "freq"))
+        except FileExistsError:
+            pass
+        try:
+            os.makedir(os.path.join(args.output_dir, "dm"))
+        except FileExistsError:
+            pass
+        try:
+            os.makedir(os.path.join(args.output_dir, "combined"))
+        except FileExistsError:
+            pass
+
+    # Make sure at least one model is being trained and it's a valid model;
     if (args.freq_model is None) and (args.dm_model is None):
         print(f"No model chosen.  At least one model must be specified via -fm or -dm")
         sys.exit(0)
-    elif (args.freq_model is not None) and 
+    elif (args.freq_model is not None) and \
          (args.freq_model not in TorchvisionModel.PARAMS):
         print(f"Invalid model chosen to process freq data {args.freq_model}")
         sys.exit(0)
-    elif (args.dm_model is not None) and 
+    elif (args.dm_model is not None) and \
          (args.dm_model not in TorchvisionModel.PARAMS):
         print(f"Invalid model chosen to process dm data {args.dm_model}")
         sys.exit(0)
 
-    # Figure out the data and model situation
+    # Figure out which data type and model(s) we are using
     data = None
     model = None
     if (args.freq_model) and (not args.dm_model):
@@ -520,7 +558,7 @@ def main() -> None:
         data = "both"
         model = f"{args.freq_model}_{args.dm_model}"
    
-    # Read training and split 85% to 15% into train/validate
+    # Read training data and split 85% to 15% into train/validate
     train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
     train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
@@ -531,7 +569,7 @@ def main() -> None:
     print(f"\n\t--- Observation counts for validation data ---", flush=True)
     printObsCounts(validate_data)
 
-    # Create batches of data and train
+    # Create batches of data for training and validation
     tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, pin_memory=True, shuffle=True)
     v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, pin_memory=True, shuffle=False)
 
