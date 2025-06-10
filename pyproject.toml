@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "fetch"
-version = "2.0.0"
+name = "pytorch-fetch"
+version = "0.1.0"
 authors = [
   { name="Tony Weaver", email="aweaver1@fandm.edu" },
 ]
@@ -34,9 +34,7 @@ classifiers = [
 
 [project.scripts]
 train = "fetch.train:main"
-transfer_train = "fetch.transfer_train:main"
 predict = "fetch.predict:main"
-predict_single = "fetch.predict_single:main"
 
 [tool.setuptools.packages.find]
 include = ["fetch*"]
