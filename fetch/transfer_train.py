@@ -67,8 +67,8 @@ def train_single_model(args,
         avg_vloss = validate_loop(v_dataloader, model, data, loss_fn, args.probability)
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
-            best_model = f"{model_name}_{data}_epoch{t+1}.pth"
-            torch.save(model.state_dict(), os.join(args.temp_dir, best_model))
+            best_model = f"{model_name}_{best_unfrozen}.pth"
+            torch.save(model.state_dict(), os.join(args.output_dir, data, best_model))
             epochs_without_improvement = 0
         else:
             epochs_without_improvement += 1
@@ -113,8 +113,8 @@ def train_single_model(args,
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
                 best_unfrozen = n
-                best_model = f"{model_name}_{data}_{n}_epoch{t+1}.pth"
-                torch.save(model.state_dict(), os.join(args.temp_dir, best_model))
+                best_model = f"{model_name}_{best_unfrozen}.pth"
+                torch.save(model.state_dict(), os.join(args.output_dir, data, best_model))
                 epochs_without_improvement = 0
                 consec_layers = 0
             else:
@@ -123,11 +123,8 @@ def train_single_model(args,
             print(f"\nEpochs without improvement count {epochs_without_improvement}", flush=True)
             print(f"Value of consec_layers: {consec_layers}", flush=True)
 
-            # As I understsand the training procedure in the paper
-            # Essentially need to go 3 consecutive unfrozen layers
-            # with no improvement in validation loss.
-            # Specifically three consecutive layers where no improvement
-            # in first 3 epochs for each layer
+            # Need to go 3 consecutive unfrozen layers with no improvement in validation loss.
+            # Three consecutive layers where no improvement in first 3 epochs for each layer
             if epochs_without_improvement >= args.patience:
                 # Possibly increase consec layers without improvement
                 if t == 2:
@@ -139,14 +136,10 @@ def train_single_model(args,
     print(f"\n\tBest validation loss: {best_vloss}", flush=True)
     print(f"\tUnfrozen layers with best validation loss: {best_unfrozen}\n\n", flush = True)
 
-    # Save the final best model to output dir
-    outfile = f"{args.output_path}/{data}/{model_name}_{best_unfrozen}.pth"
-    copy(best_model_path, outfile)
-
-def train_combined(args,
-                   tr_dataloader: DataLoader, 
-                   v_dataloader: DataLoader, 
-                   model_name: str) -> None:
+def train_combined_model(args,
+                         tr_dataloader: DataLoader, 
+                         v_dataloader: DataLoader, 
+                         model_name: str) -> None:
     r"""Performs training for a combined model using both freq and dm data
         Assumes that the freq and dm models have already been transfer trained
 
@@ -163,8 +156,11 @@ def train_combined(args,
 
     # Figure out the freq and dm models to use
     freq_model_name, dm_model_name = model_name.split("_")
+    
+    freq_unfrozen = 0
+    dm_unfrozen = 0
 
-    best_model_path = ""
+    best_model = ""
     best_vloss = float('inf')
     best_k = 0
 
@@ -173,7 +169,7 @@ def train_combined(args,
         
         # Load saved weights for freq model, ignoring classifier layer
         # because we're replacing it with new layer with different num features
-        freq_model = TorchvisionModel(freq_model_name, k, args.unfrozen_freq)
+        freq_model = TorchvisionModel(freq_model_name, k, freq_unfrozen)
         freq_model_path = f"model_weights/{args.freq_model}_freq.pth"
         state_dict = torch.load(freq_model_path, weights_only=True)
         new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("model.classifier")}
@@ -181,7 +177,7 @@ def train_combined(args,
 
         # Load saved weights for freq model, ignoring classifier layer
         # because we're replacing it with new layer with different num features
-        dm_model = TorchvisionModel(dm_model_name, k, args.unfrozen_dm)
+        dm_model = TorchvisionModel(dm_model_name, k, dm_unfrozen)
         dm_model_path = f"model_weights/{args.dm_model}_dm.pth"
         state_dict = torch.load(dm_model_path, weights_only=True)
         new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("model.classifier")}
@@ -211,9 +207,8 @@ def train_combined(args,
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
                 best_k = k
-                model_path = f"model_{args.freq_model}_{args.dm_model}_{k}_epoch{t+1}.pth"
-                best_model_path = model_path
-                torch.save(model.state_dict(), model_path)
+                best_model = f"{args.freq_model}_{args.dm_model}_{k}.pth"
+                torch.save(model.state_dict(), os.join(args.output_dir, "combined", best_model))
                 epochs_without_improvement = 0
             else:
                 epochs_without_improvement += 1
@@ -226,10 +221,6 @@ def train_combined(args,
     print(f"\n--- FINAL TRAINING RESULTS ---", flush=True)
     print(f"\n\tBest validation loss: {best_vloss}", flush=True)
     print(f"\tBest hyperparameter: {best_k}\n\n", flush = True)
-
-    # Save the final best model based on train/validation to output dir
-    outfile = f"{args.output_path}/{args.freq_model}_{args.dm_model}_{best_k}.pth"
-    copy(best_model_path, outfile)
     
 def train_loop(dataloader: DataLoader, 
                model: nn.Module,
@@ -469,15 +460,6 @@ def main() -> None:
         default=None,
     )
     parser.add_argument(
-        "-tmp",
-        "--temp_dir",
-        help="Directory to write temporary model files to during training\n \
-              Files in this directory will be removed after training is complete\n \
-              If not specified it will default to the current directory",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
         "-lr", "--learning_rate", help="Training learning rate", default=1e-3, type=float
     )
     parser.add_argument(
@@ -489,59 +471,42 @@ def main() -> None:
     parser.add_argument(
         "-dm", "--dm_model", help="DM data processing model", type=str, default=None
     )
-    parser.add_argument(
-        "-uf", "--unfrozen_freq", help="Num layers to unfreeze in freq model", type=int
-    )
-    parser.add_argument(
-        "-ud", "--unfrozen_dm", help="Num layers to unfreeze in dm model", type=int
-    )
 
     args = parser.parse_args()
 
-    
     print(f"Using {DEVICE} for computation", flush=True)
     if args.gpu_id:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
 
-    # Make sure temp and output directories exist
-    if args.temp_dir is None:
-        args.temp_dir = os.getcwd()
-    elif not os.path.isdir(args.temp_dir):
-        print(f"Temp directory {args.temp_dir} is not a directory")
-        sys.exit(0)
-
+    # Make sure output directories exist
     if args.output_dir is None:
         args.output_dir = os.getcwd()
     elif not os.path.isdir(args.output_dir):
         print(f"Output directory {args.output_dir} is not a directory")
         sys.exit(0)
-    else:
-        # Create the subdirectories to hold the final trained models
-        # Based on the data they are trained on
-        # If they already exist, no problem
-        try:
-            os.makedir(os.path.join(args.output_dir, "freq"))
-        except FileExistsError:
-            pass
-        try:
-            os.makedir(os.path.join(args.output_dir, "dm"))
-        except FileExistsError:
-            pass
-        try:
-            os.makedir(os.path.join(args.output_dir, "combined"))
-        except FileExistsError:
-            pass
+    
+    # Create the subdirectories to hold the final trained model
+    try:
+        os.makedir(os.path.join(args.output_dir, "freq"))
+    except FileExistsError:
+        pass
+    try:
+        os.makedir(os.path.join(args.output_dir, "dm"))
+    except FileExistsError:
+        pass
+    try:
+        os.makedir(os.path.join(args.output_dir, "combined"))
+    except FileExistsError:
+        pass
 
-    # Make sure at least one model is being trained and it's a valid model;
+    # Make sure at least one model is being trained and it's a valid model
     if (args.freq_model is None) and (args.dm_model is None):
         print(f"No model chosen.  At least one model must be specified via -fm or -dm")
         sys.exit(0)
-    elif (args.freq_model is not None) and \
-         (args.freq_model not in TorchvisionModel.PARAMS):
+    elif (args.freq_model is not None) and (args.freq_model not in TorchvisionModel.PARAMS):
         print(f"Invalid model chosen to process freq data {args.freq_model}")
         sys.exit(0)
-    elif (args.dm_model is not None) and \
-         (args.dm_model not in TorchvisionModel.PARAMS):
+    elif (args.dm_model is not None) and (args.dm_model not in TorchvisionModel.PARAMS):
         print(f"Invalid model chosen to process dm data {args.dm_model}")
         sys.exit(0)
 
@@ -555,7 +520,7 @@ def main() -> None:
         data = "dm"
         model = args.dm_model
     else:
-        data = "both"
+        data = "combined"
         model = f"{args.freq_model}_{args.dm_model}"
    
     # Read training data and split 85% to 15% into train/validate
@@ -574,9 +539,9 @@ def main() -> None:
     v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, pin_memory=True, shuffle=False)
 
     if data != "both":
-        train_individual(args, tr_dataloader, v_dataloader, model)
+        train_single_model(args, tr_dataloader, v_dataloader, model)
     else:
-        train_combined(args, tr_dataloader, v_dataloader, model)
+        train_combined_model(args, tr_dataloader, v_dataloader, model)
 
     # Test model
     tst_dataloader = None
