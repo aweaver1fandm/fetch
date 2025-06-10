@@ -498,15 +498,15 @@ def main() -> None:
         sys.exit(0)
     
     try:
-        os.makedir(os.path.join(args.model_dir, "freq"))
+        os.mkdir(os.path.join(args.model_dir, "freq"))
     except FileExistsError:
         pass
     try:
-        os.makedir(os.path.join(args.model_dir, "dm"))
+        os.mkdir(os.path.join(args.model_dir, "dm"))
     except FileExistsError:
         pass
     try:
-        os.makedir(os.path.join(args.model_dir, "combined"))
+        os.mkdir(os.path.join(args.model_dir, "combined"))
     except FileExistsError:
         pass
 
