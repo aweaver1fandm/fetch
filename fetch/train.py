@@ -62,11 +62,11 @@ def train_single_model(args,
 
         # Do a training pass
         print(f"Training...", flush=True)
-        train_loop(tr_dataloader, model, data, loss_fn, optimizer, args.batch_size)
+        train_loop(tr_dataloader, model, data_type, loss_fn, optimizer, args.batch_size)
 
         # Validate the model and track best model perfomance
         print(f"\nPerforming validation...", flush=True)
-        avg_vloss = validate_loop(v_dataloader, model, data, loss_fn, args.probability)
+        avg_vloss = validate_loop(v_dataloader, model, data_type, loss_fn, args.probability)
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
             best_model = f"{model_name}_{unfrozen}.pth"
@@ -104,11 +104,11 @@ def train_single_model(args,
 
             # Train the model
             print(f"Training...", flush=True)
-            train_loop(tr_dataloader, model, args.data, loss_fn, optimizer, args.batch_size)
+            train_loop(tr_dataloader, model, data_type, loss_fn, optimizer, args.batch_size)
 
             # Validate the model and track best model perfomance
             print(f"\nPerforming validation...", flush=True)
-            avg_vloss = validate_loop(v_dataloader, model, args.data, loss_fn, args.probability)
+            avg_vloss = validate_loop(v_dataloader, model, data_type, loss_fn, args.probability)
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
                 best_unfrozen = unfrozen
@@ -210,11 +210,11 @@ def train_combined_model(args,
 
             # Train the model
             print(f"Training...", flush=True)
-            train_loop(tr_dataloader, model, loss_fn, optimizer, args.batch_size)
+            train_loop(tr_dataloader, model, "combined", loss_fn, optimizer, args.batch_size)
 
             # Validate the model and track best model perfomance
             print(f"\nPerforming validation...", flush=True)
-            avg_vloss = validate_loop(v_dataloader, model, loss_fn, args.probability)
+            avg_vloss = validate_loop(v_dataloader, model, "combined", loss_fn, args.probability)
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
                 best_k = k
@@ -266,11 +266,11 @@ def train_loop(dataloader: DataLoader,
 
         # Add some noise to freq data to help avoid overtraining
         # And load data on GPU
-        if data == "freq" or data == "both":
+        if data == "freq" or data == "combined":
             noise = torch.randn_like(freq_data) * .1
             freq_data = freq_data + noise
             freq_data = freq_data.to(DEVICE, non_blocking=True)
-        elif data == "dm" or data == "both":
+        elif data == "dm" or data == "combined":
             dm_data = dm_data.to(DEVICE, non_blocking=True)
         else:
             print(f"Invalid data type provided: {data}", flush=True)
