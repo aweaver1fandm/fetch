@@ -70,7 +70,7 @@ def train_single_model(args,
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
             best_model = f"{model_name}_{unfrozen}.pth"
-            torch.save(model.state_dict(), os.join(args.model_dir, data_type, best_model))
+            torch.save(model.state_dict(), os.path.join(args.model_dir, data_type, best_model))
             epochs_without_improvement = 0
         else:
             epochs_without_improvement += 1
@@ -113,7 +113,7 @@ def train_single_model(args,
                 best_vloss = avg_vloss
                 best_unfrozen = unfrozen
                 best_model = f"{model_name}_{unfrozen}.pth"
-                torch.save(model.state_dict(), os.join(args.model_dir, data_type, best_model))
+                torch.save(model.state_dict(), os.path.join(args.model_dir, data_type, best_model))
                 epochs_without_improvement = 0
                 consec_layers = 0
             else:
@@ -134,7 +134,7 @@ def train_single_model(args,
     print(f"\n\tBest validation loss: {best_vloss}", flush=True)
     print(f"\tUnfrozen layers with best validation loss: {best_unfrozen}\n\n", flush = True)
 
-    return os.join(args.model_dir, data_type, best_model)
+    return os.path.join(args.model_dir, data_type, best_model)
 
 def train_combined_model(args,
                          tr_dataloader: DataLoader, 
@@ -154,23 +154,23 @@ def train_combined_model(args,
     freq_model_name, dm_model_name = model_name.split("_")
     unfrozen_freq = 0
     freq_weight_file = ""
-    model_files = os.listdir(os.join(args.model_dir, "freq"))
+    model_files = os.listdir(os.path.join(args.model_dir, "freq"))
     for file in model_files:
         if file.startswith(freq_model_name):
             freq_weight_file =  file
             base, extension = os.path.splitext(freq_weight_file)
             tmp, unfrozen_freq = base.split("-")
-            freq_weight_file = os.join(args.model_dir, "freq", freq_weight_file)
+            freq_weight_file = os.path.join(args.model_dir, "freq", freq_weight_file)
 
     unfrozen_dm = 0
     dm_weight_file = ""
-    model_files = os.listdir(os.join(args.model_dir, "dm"))
+    model_files = os.listdir(os.path.join(args.model_dir, "dm"))
     for file in model_files:
         if file.startswith(dm_model_name):
             dm_weight_file =  file
             base, extension = os.path.splitext(dm_weight_file)
             tmp, unfrozen_dm = base.split("-")
-            dm_weight_file = os.join(args.model_dir, "dm", dm_weight_file)
+            dm_weight_file = os.path.join(args.model_dir, "dm", dm_weight_file)
 
     # Train over different hyperparameters of k from 2^5 to 2^9
     k_hyperparameter = [2**5, 2**6, 2**7, 2**8, 2**9]
@@ -219,7 +219,7 @@ def train_combined_model(args,
                 best_vloss = avg_vloss
                 best_k = k
                 best_model = f"model_{freq_model_name}_{dm_model_name}_{k}.pth"
-                torch.save(model.state_dict(), os.join(args.model_dir, "combined", best_model))
+                torch.save(model.state_dict(), os.path.join(args.model_dir, "combined", best_model))
                 epochs_without_improvement = 0
             else:
                 epochs_without_improvement += 1
@@ -233,7 +233,7 @@ def train_combined_model(args,
     print(f"\n\tBest validation loss: {best_vloss}", flush=True)
     print(f"\tBest hyperparameter: {best_k}\n\n", flush = True)
 
-    return os.join(args.model_dir, "combined", best_model), best_k
+    return os.path.join(args.model_dir, "combined", best_model), best_k
     
 def train_loop(dataloader: DataLoader, 
                model: nn.Module,
