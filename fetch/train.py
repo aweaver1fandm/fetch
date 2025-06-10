@@ -483,6 +483,9 @@ def main() -> None:
     parser.add_argument(
         "-dm", "--dm_model", help="DM data processing model", type=str, default=None, choices=allowed_models
     )
+    parser.add_argument(
+        "-p", "--probability", help="Detection threshold", default=0.5, type=float
+    )
 
     args = parser.parse_args()
 
