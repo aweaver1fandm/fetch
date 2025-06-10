@@ -545,9 +545,9 @@ def main() -> None:
     printObsCounts(validate_data)
 
     if data_type != "combined":
-        trained_model_path = train_single_model(args, tr_dataloader, v_dataloader, model)
+        trained_model_path = train_single_model(args, tr_dataloader, v_dataloader, model_name)
     else:
-        trained_model_path, best_k = train_combined_model(args, tr_dataloader, v_dataloader, model)
+        trained_model_path, best_k = train_combined_model(args, tr_dataloader, v_dataloader, model_name)
 
     # Test model
     if args.test_data_dir is not None:
