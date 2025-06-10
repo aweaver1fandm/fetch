@@ -434,7 +434,7 @@ def main() -> None:
     Transfer training for an individual pre-trained Torchvision model
     """
 
-    allowed_models = list(TorchvisionModel.PARAMS.keys()) + None
+    allowed_models = TorchvisionModel.PARAMS.keys()
 
     parser = argparse.ArgumentParser(
         description="PyTorch version of Fast Extragalactic Transient Candiate Hunter (FETCH)"
