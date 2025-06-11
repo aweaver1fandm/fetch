@@ -158,6 +158,9 @@ def train_combined_model(args,
         v_dataloader: Batches of validation data
         model_name: The model being trained
     """
+
+    # Create tmp directory to write intermediate files to
+    tmp_dir = tempfile.TemporaryDirectory()
     
     # Figure out the freq and dm models to use
     freq_model_name, dm_model_name = model_name.split("_")
@@ -228,7 +231,7 @@ def train_combined_model(args,
                 best_vloss = avg_vloss
                 best_k = k
                 best_model = f"model_{freq_model_name}_{dm_model_name}_{k}.pth"
-                torch.save(model.state_dict(), os.path.join(args.model_dir, "combined", best_model))
+                torch.save(model.state_dict(), os.path.join(tmp_dir.name, best_model))
                 epochs_without_improvement = 0
             else:
                 epochs_without_improvement += 1
@@ -242,7 +245,14 @@ def train_combined_model(args,
     print(f"\n\tBest validation loss: {best_vloss}", flush=True)
     print(f"\tBest hyperparameter: {best_k}\n\n", flush = True)
 
-    return os.path.join(args.model_dir, "combined", best_model), best_k
+    # Save the final best model to output directory
+    tmp_file_path = os.path.join(tmp_dir.name, best_model)
+    saved_model_path = os.path.join(args.model_dir, "combined", best_model)
+    copy(tmp_file_path, saved_model_path)
+
+    tmp_dir.cleanup()
+    
+    return saved_model_path, best_k
     
 def train_loop(dataloader: DataLoader, 
                model: nn.Module,
