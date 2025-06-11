@@ -171,7 +171,7 @@ def train_combined_model(args,
         if file.startswith(freq_model_name):
             freq_weight_file =  file
             base, extension = os.path.splitext(freq_weight_file)
-            tmp, unfrozen_freq = base.split("-")
+            tmp, unfrozen_freq = base.split("_")
             freq_weight_file = os.path.join(args.model_dir, "freq", freq_weight_file)
 
     unfrozen_dm = 0
