@@ -5,15 +5,14 @@ import glob
 import sys
 import numpy as np
 from shutil import copy
+import tempfile
 
 import torch
 from torch import nn
 from torch.nn.modules.loss import _Loss
 from torch.optim import Optimizer
-
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets
-
 from torcheval.metrics.functional import binary_precision, binary_recall, binary_f1_score
 
 from fetch.pulsar_data import PulsarData, printObsCounts
@@ -38,6 +37,9 @@ def train_single_model(args,
         v_dataloader: Batches of validation data
         model_name: The model being trained
     """
+
+    # Create tmp directory to write intermediate files to
+    tmp_dir = tempfile.TemporaryDirectory()
 
     # Initialize some variables
     best_model = ""
@@ -70,7 +72,7 @@ def train_single_model(args,
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
             best_model = f"{model_name}_{unfrozen}.pth"
-            torch.save(model.state_dict(), os.path.join(args.model_dir, data_type, best_model))
+            torch.save(model.state_dict(), os.path.join(tmp_dir.name, best_model))
             epochs_without_improvement = 0
         else:
             epochs_without_improvement += 1
@@ -113,7 +115,7 @@ def train_single_model(args,
                 best_vloss = avg_vloss
                 best_unfrozen = unfrozen
                 best_model = f"{model_name}_{unfrozen}.pth"
-                torch.save(model.state_dict(), os.path.join(args.model_dir, data_type, best_model))
+                torch.save(model.state_dict(), os.path.join(tmp_dir.name, best_model))
                 epochs_without_improvement = 0
                 consec_layers = 0
             else:
@@ -134,7 +136,14 @@ def train_single_model(args,
     print(f"\n\tBest validation loss: {best_vloss}", flush=True)
     print(f"\tUnfrozen layers with best validation loss: {best_unfrozen}\n\n", flush = True)
 
-    return os.path.join(args.model_dir, data_type, best_model)
+    # Save the final best model to output directory
+    tmp_file_path = os.path.join(tmp_dir.name, best_model)
+    saved_model_path = os.path.join(args.model_dir, data_type, best_model)
+    copy(tmp_file_path, saved_model_path)
+    
+    tmp_dir.cleanup()
+    
+    return saved_model_path
 
 def train_combined_model(args,
                          tr_dataloader: DataLoader, 
