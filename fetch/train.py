@@ -289,7 +289,7 @@ def train_loop(dataloader: DataLoader,
             noise = torch.randn_like(freq_data) * .1
             freq_data = freq_data + noise
             freq_data = freq_data.to(DEVICE, non_blocking=True)
-            
+
         if data == "dm" or data == "combined":
             dm_data = dm_data.to(DEVICE, non_blocking=True)
 
@@ -357,13 +357,10 @@ def validate_loop(dataloader: DataLoader,
             elif data == "dm":
                 dm_data = dm_data.to(DEVICE, non_blocking=True)
                 predicted = model(dm_data)
-            elif data == "both":
+            else:
                 freq_data = freq_data.to(DEVICE, non_blocking=True)
                 dm_data = dm_data.to(DEVICE, non_blocking=True)
                 predicted = model(freq_data, dm_data)
-            else:
-                print(f"Invalid data type provided: {data}", flush=True)
-                sys.exit(0)
 
             # Convert to either 0 or 1 based on prediction probability
             predicted = (predicted >= prob).float()
