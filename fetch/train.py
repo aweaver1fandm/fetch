@@ -181,7 +181,7 @@ def train_combined_model(args,
         if file.startswith(dm_model_name):
             dm_weight_file =  file
             base, extension = os.path.splitext(dm_weight_file)
-            tmp, unfrozen_dm = base.split("-")
+            tmp, unfrozen_dm = base.split("_")
             dm_weight_file = os.path.join(args.model_dir, "dm", dm_weight_file)
 
     # Train over different hyperparameters of k from 2^5 to 2^9
