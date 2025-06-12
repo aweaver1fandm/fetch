@@ -289,11 +289,9 @@ def train_loop(dataloader: DataLoader,
             noise = torch.randn_like(freq_data) * .1
             freq_data = freq_data + noise
             freq_data = freq_data.to(DEVICE, non_blocking=True)
-        elif data == "dm" or data == "combined":
+            
+        if data == "dm" or data == "combined":
             dm_data = dm_data.to(DEVICE, non_blocking=True)
-        else:
-            print(f"Invalid data type provided: {data}", flush=True)
-            sys.exit(0)
 
         predicted = None
         if data == "freq":
