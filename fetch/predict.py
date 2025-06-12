@@ -4,7 +4,7 @@ import argparse
 import glob
 import os
 import string
-
+import sys
 import numpy as np
 import pandas as pd
 
@@ -12,7 +12,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from fetch.pulsar_data import PulsarData
-from fetch.model import PulsarModel
+from fetch.model import PulsarModel, TorchvisionModel
 
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -21,16 +21,14 @@ def main():
     r""" Entry point for running via command line
     Uses a pre-trained combined model to make predictions
     """
+
+    allowed_models = TorchvisionModel.PARAMS.keys()
+
     parser = argparse.ArgumentParser(
         description="Fast Extragalactic Transient Candiate Hunter (FETCH)",
     )
     parser.add_argument(
-        "-g",
-        "--gpu_id",
-        help="GPU ID",
-        type=int,
-        required=False,
-        default=0,
+        "-g", "--gpu_id", help="GPU ID", type=int, required=False, default=0,
     )
     parser.add_argument(
         "-c",
@@ -44,28 +42,65 @@ def main():
         "-b", "--batch_size", help="Batch size for making predictions", default=64, type=int
     )
     parser.add_argument(
-        "-d", 
-        "--data_type", 
-        help="Type of data to use for predicting: both (DEFAULT), freq, dm", 
-        default="both", 
-        type=str
+        "-m",
+        "--model_dir",
+        help="Base directory where models are at (or will be saved to)\n \
+              Base directory will then have freq, dm, combined subdirectories (which will be created if they don't exist)\n \
+              If not specified, it will default to current directory.",
+        type=str,
+        default=None,
     )
     parser.add_argument(
-        "-w", "--weights", help="Directory containing model weights", required=True
+        "-fm", "--freq_model", help="Freq data processing model", type=str, default=None, choices=allowed_models
+    )
+    parser.add_argument(
+        "-dm", "--dm_model", help="DM data processing model", type=str, default=None, choices=allowed_models
     )
     parser.add_argument(
         "-p", "--probability", help="Detection threshold", default=0.5, type=float
     )
     args = parser.parse_args()
 
+    print(f"Using {DEVICE} for computation", flush=True)
     if args.gpu_id >= 0:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
 
-    print(f"Using {DEVICE} for computation", flush=True)
+    # Use current directory or command line argument as base directory for model locations
+    if args.model_dir is None:
+        args.model_dir = os.getcwd()
+    elif not os.path.isdir(args.model_dir):
+        print(f"Model directory, {args.model_dir} does not exist")
+        sys.exit(0)
 
-    # Get the model and set it to eval mode
-    model = PulsarModel()
-    model.load_state_dict(torch.load(f"{args.weights}/DenseNet201_DenseNet201_64.pth", weights_only=True))
+    # Make sure proper sub-directories exist
+
+    # Make sure at least one model has been set
+    if (args.freq_model is None) and (args.dm_model is None):
+        print(f"No model chosen.  At least one -fm or -dm must be specified")
+        sys.exit(0)
+    
+    # Figure out which model we are using
+    model = None
+    if (args.freq_model) and (args.dm_model):
+        model_name = f"{args.freq_model}_{args.dm_model}"
+        model = PulsarModel()
+        model_files = os.listdir(os.path.join(args.model_dir, "combinded"))
+        for file in model_files:
+            if file.startswith(model_name):
+                model.load_state_dict(torch.load(file, weights_only=True))
+    elif args.freq_model:
+        model = TorchvisionModel(args.freq_model, 1)
+        model_files = os.listdir(os.path.join(args.model_dir, "freq"))
+        for file in model_files:
+            if file.startswith(args.freq_model):
+                model.load_state_dict(torch.load(file, weights_only=True))
+    else:
+        model = TorchvisionModel(args.dm_model, 1)
+        model_files = os.listdir(os.path.join(args.model_dir, "dm"))
+        for file in model_files:
+            if file.startswith(args.dm_model):
+                model.load_state_dict(torch.load(file, weights_only=True))
+
     model.eval()
     model.to(DEVICE)
     
@@ -87,10 +122,17 @@ def main():
     probs = []
     with torch.no_grad():
         for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
-            freq_data = freq_data.to(DEVICE, non_blocking=True)
-            dm_data = dm_data.to(DEVICE, non_blocking=True)
 
-            predicted = model(freq_data, dm_data)
+            if args.freq_model and args.dm_model:
+                freq_data = freq_data.to(DEVICE, non_blocking=True)
+                dm_data = dm_data.to(DEVICE, non_blocking=True)
+                predicted = model(freq_data, dm_data)
+            elif args.freq_model:
+                freq_data = freq_data.to(DEVICE, non_blocking=True)
+                predicted = model(freq_data)
+            else:
+                dm_data = dm_data.to(DEVICE, non_blocking=True)
+                predicted = model(dm_data)
 
             predicted = predicted.to('cpu').numpy()
             probs.extend(predicted)
