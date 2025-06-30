@@ -89,21 +89,24 @@ def main():
                 freq = TorchvisionModel(args.freq_model, int(k))
                 dm = TorchvisionModel(args.dm_model, int(k))
                 model = PulsarModel(freq, dm, int(k))
-                model.load_state_dict(torch.load(file, weights_only=True))
+                full_path = os.path.join(model_files, file)
+                model.load_state_dict(torch.load(full_path, weights_only=True))
                 continue
     elif args.freq_model:
         model = TorchvisionModel(args.freq_model, 1)
         model_files = os.listdir(os.path.join(args.model_dir, "freq"))
         for file in model_files:
             if file.startswith(args.freq_model):
-                model.load_state_dict(torch.load(file, weights_only=True))
+                full_path = os.path.join(model_files, file)
+                model.load_state_dict(torch.load(full_path, weights_only=True))
                 continue
     else:
         model = TorchvisionModel(args.dm_model, 1)
         model_files = os.listdir(os.path.join(args.model_dir, "dm"))
         for file in model_files:
             if file.startswith(args.dm_model):
-                model.load_state_dict(torch.load(file, weights_only=True))
+                full_path = os.path.join(model_files, file)
+                model.load_state_dict(torch.load(full_path, weights_only=True))
                 continue
 
     model.eval()
