@@ -124,30 +124,30 @@ def main():
             print(f"No candidates to evaluate in directory: {data_dir}", flush=True)
             continue
 
-    # Setup the candidate data
-    inputs = PulsarData(files=cands_to_eval)
-    dataloader = DataLoader(inputs, batch_size=args.batch_size, pin_memory=True, shuffle=False)
+        # Setup the candidate data
+        inputs = PulsarData(files=cands_to_eval)
+        dataloader = DataLoader(inputs, batch_size=args.batch_size, pin_memory=True, shuffle=False)
 
-    # Make predictions in batches
-    predictions = []
-    probs = []
-    with torch.no_grad():
-        for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
+        # Make predictions in batches
+        predictions = []
+        probs = []
+        with torch.no_grad():
+            for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
 
-            if args.freq_model and args.dm_model:
-                freq_data = freq_data.to(DEVICE, non_blocking=True)
-                dm_data = dm_data.to(DEVICE, non_blocking=True)
-                predicted = model(freq_data, dm_data)
-            elif args.freq_model:
-                freq_data = freq_data.to(DEVICE, non_blocking=True)
-                predicted = model(freq_data)
-            else:
-                dm_data = dm_data.to(DEVICE, non_blocking=True)
-                predicted = model(dm_data)
+                if args.freq_model and args.dm_model:
+                    freq_data = freq_data.to(DEVICE, non_blocking=True)
+                    dm_data = dm_data.to(DEVICE, non_blocking=True)
+                    predicted = model(freq_data, dm_data)
+                elif args.freq_model:
+                    freq_data = freq_data.to(DEVICE, non_blocking=True)
+                    predicted = model(freq_data)
+                else:
+                    dm_data = dm_data.to(DEVICE, non_blocking=True)
+                    predicted = model(dm_data)
 
-            predicted = predicted.to('cpu').numpy()
-            probs.extend(predicted)
-            predictions.extend(np.round(predicted >= args.probability))
+                predicted = predicted.to('cpu').numpy()
+                probs.extend(predicted)
+                predictions.extend(np.round(predicted >= args.probability))
 
     # Save the results
     print(f"Saving final results", flush=True)
