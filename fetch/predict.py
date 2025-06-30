@@ -85,7 +85,7 @@ def main():
         for file in model_files:
             file_base = os.path.splitext(file)[0]
             if file_base.startswith(model_name):
-                f, d, k = file.split("_")
+                f, d, k = file_base.split("_")
                 freq = TorchvisionModel(args.freq_model, int(k))
                 dm = TorchvisionModel(args.dm_model, int(k))
                 model = PulsarModel(freq, dm, int(k))
