@@ -85,9 +85,9 @@ def main():
         for file in model_files:
             if file.startswith(model_name):
                 f, d, k = file.split("_")
-                freq = TorchvisionModel(args.freq_model, k)
-                dm = TorchvisionModel(args.dm_model, k)
-                model = PulsarModel(freq, dm, k)
+                freq = TorchvisionModel(args.freq_model, int(k))
+                dm = TorchvisionModel(args.dm_model, int(k))
+                model = PulsarModel(freq, dm, int(k))
                 model.load_state_dict(torch.load(file, weights_only=True))
                 continue
     elif args.freq_model:
