@@ -118,6 +118,10 @@ def main():
     # Get all the candidate files
     for data_dir in args.data_dir:
 
+        # TODO: Need to fix this section
+        #       If the h5 file contains multiple data points then
+        #       Further down there's an array length mismatch because
+        #       There's one file name but multiple predictions
         cands_to_eval = glob.glob(f"{data_dir}/*h*5")
 
         if len(cands_to_eval) == 0:
