@@ -81,7 +81,8 @@ def main():
     model = None
     if (args.freq_model) and (args.dm_model):
         model_name = f"{args.freq_model}_{args.dm_model}"
-        model_files = os.listdir(os.path.join(args.model_dir, "combined"))
+        base_dir = os.path.join(args.model_dir, "combined")
+        model_files = os.listdir(base_dir)
         for file in model_files:
             file_base = os.path.splitext(file)[0]
             if file_base.startswith(model_name):
@@ -89,23 +90,25 @@ def main():
                 freq = TorchvisionModel(args.freq_model, int(k))
                 dm = TorchvisionModel(args.dm_model, int(k))
                 model = PulsarModel(freq, dm, int(k))
-                full_path = os.path.join(model_files, file)
+                full_path = os.path.join(base_dir, file)
                 model.load_state_dict(torch.load(full_path, weights_only=True))
                 continue
     elif args.freq_model:
         model = TorchvisionModel(args.freq_model, 1)
-        model_files = os.listdir(os.path.join(args.model_dir, "freq"))
+        base_dir = os.path.join(args.model_dir, "freq")
+        model_files = os.listdir(base_dir)
         for file in model_files:
             if file.startswith(args.freq_model):
-                full_path = os.path.join(model_files, file)
+                full_path = os.path.join(base_dir, file)
                 model.load_state_dict(torch.load(full_path, weights_only=True))
                 continue
     else:
         model = TorchvisionModel(args.dm_model, 1)
-        model_files = os.listdir(os.path.join(args.model_dir, "dm"))
+        base_dir = os.path.join(args.model_dir, "dm")
+        model_files = os.listdir(base_dir)
         for file in model_files:
             if file.startswith(args.dm_model):
-                full_path = os.path.join(model_files, file)
+                full_path = os.path.join(base_dir, file)
                 model.load_state_dict(torch.load(full_path, weights_only=True))
                 continue
 
