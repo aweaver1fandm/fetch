@@ -83,7 +83,8 @@ def main():
         model_name = f"{args.freq_model}_{args.dm_model}"
         model_files = os.listdir(os.path.join(args.model_dir, "combined"))
         for file in model_files:
-            if file.startswith(model_name):
+            file_base = os.path.splitext(file)[0]
+            if file_base.startswith(model_name):
                 f, d, k = file.split("_")
                 freq = TorchvisionModel(args.freq_model, int(k))
                 dm = TorchvisionModel(args.dm_model, int(k))
