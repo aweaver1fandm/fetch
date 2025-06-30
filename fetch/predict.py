@@ -84,7 +84,7 @@ def main():
         model_files = os.listdir(os.path.join(args.model_dir, "combined"))
         for file in model_files:
             if file.startswith(model_name):
-                f, d, k = os.split(file, "_")
+                f, d, k = file.split("_")
                 freq = TorchvisionModel(args.freq_model, k)
                 dm = TorchvisionModel(args.dm_model, k)
                 model = PulsarModel(freq, dm, k)
@@ -149,5 +149,5 @@ def main():
     results_dict["probability"] = probs
     results_dict["label"] = predictions
 
-    results_file = data_dir + f"/results_full_model.csv"
+    results_file = data_dir + f"/predict_results.csv"
     pd.DataFrame(results_dict).to_csv(results_file)
