@@ -72,8 +72,6 @@ def main():
         print(f"Model directory, {args.model_dir} does not exist")
         sys.exit(0)
 
-    # Make sure proper sub-directories exist
-
     # Make sure at least one model has been set
     if (args.freq_model is None) and (args.dm_model is None):
         print(f"No model chosen.  At least one -fm or -dm must be specified")
@@ -83,23 +81,29 @@ def main():
     model = None
     if (args.freq_model) and (args.dm_model):
         model_name = f"{args.freq_model}_{args.dm_model}"
-        model = PulsarModel()
-        model_files = os.listdir(os.path.join(args.model_dir, "combinded"))
+        model_files = os.listdir(os.path.join(args.model_dir, "combined"))
         for file in model_files:
             if file.startswith(model_name):
+                f, d, k = os.split(file, "_")
+                freq = TorchvisionModel(args.freq_model, k)
+                dm = TorchvisionModel(args.dm_model, k)
+                model = PulsarModel(freq, dm, k)
                 model.load_state_dict(torch.load(file, weights_only=True))
+                continue
     elif args.freq_model:
         model = TorchvisionModel(args.freq_model, 1)
         model_files = os.listdir(os.path.join(args.model_dir, "freq"))
         for file in model_files:
             if file.startswith(args.freq_model):
                 model.load_state_dict(torch.load(file, weights_only=True))
+                continue
     else:
         model = TorchvisionModel(args.dm_model, 1)
         model_files = os.listdir(os.path.join(args.model_dir, "dm"))
         for file in model_files:
             if file.startswith(args.dm_model):
                 model.load_state_dict(torch.load(file, weights_only=True))
+                continue
 
     model.eval()
     model.to(DEVICE)

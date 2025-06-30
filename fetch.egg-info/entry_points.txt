@@ -1,2 +1,3 @@
 [console_scripts]
 train = fetch.train:main
+predict = fetch.predict:main

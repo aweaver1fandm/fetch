@@ -159,8 +159,8 @@ class PulsarModel(nn.Module):
         r""" Builds a combined pulsar prediction model using pre-trained freq and dm modules
 
         Args: 
-            freq_module: A pre-trained Torchvision model trained on frequency data
-            dm_module: A pre-trained Torchvision model trained on dm data
+            freq_module: A transfer trained Torchvision model based on frequency data
+            dm_module: A transfer trained Torchvision model based on dm data
             k: Number of hyperparameters to include in model
                Default value is 64
             
@@ -168,12 +168,8 @@ class PulsarModel(nn.Module):
         """
         super().__init__()
     
-        if freq_module is None:
-            self.freq_model = TorchvisionModel("DenseNet201", k)
-            self.dm_model = TorchvisionModel("DenseNet201", k)
-        else:
-            self.freq_model = freq_module
-            self.dm_model = dm_module
+        self.freq_model = freq_module
+        self.dm_model = dm_module
 
         # Final process of combined freq and DM data
         self.classifier = nn.Sequential(

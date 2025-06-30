@@ -58,23 +58,3 @@ If you want to use another model, not part of PyTorch Vision, you will have buil
 
 Citing this work
 ---
-
-If you use this code I would ask you cite both of the following which includes
-the original FETCH:
-
-    @article{Agarwal2020,
-      doi = {10.1093/mnras/staa1856},
-      url = {https://doi.org/10.1093/mnras/staa1856},
-      year = {2020},
-      month = jun,
-      publisher = {Oxford University Press ({OUP})},
-      author = {Devansh Agarwal and Kshitij Aggarwal and Sarah Burke-Spolaor and Duncan R Lorimer and Nathaniel Garver-Daniels},
-      title = {{FETCH}: A deep-learning based classifier for fast transient classification},
-      journal = {Monthly Notices of the Royal Astronomical Society}
-    }
-    @software{
-        author      = {Weaver, Tony},
-        title       = {Pytorch FETCH [source code]},
-        year        = 2025,
-        url         = {}
-    }

@@ -198,12 +198,12 @@ def train_combined_model(args,
         # because we're replacing it with new layer with different num features
         freq_model = TorchvisionModel(freq_model_name, k, unfrozen_freq)
         state_dict = torch.load(freq_weight_file, weights_only=True)
-        new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("model.classifier")}
+        new_state_dict = {key: v for key, v in state_dict.items() if not key.startswith("model.classifier")}
         freq_model.load_state_dict(new_state_dict, strict=False)
 
         dm_model = TorchvisionModel(dm_model_name, k, unfrozen_dm)
         state_dict = torch.load(dm_weight_file, weights_only=True)
-        new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("model.classifier")}
+        new_state_dict = {key: v for key, v in state_dict.items() if not key.startswith("model.classifier")}
         dm_model.load_state_dict(new_state_dict, strict=False)
 
         # Setup combined model
@@ -230,7 +230,7 @@ def train_combined_model(args,
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
                 best_k = k
-                best_model = f"model_{freq_model_name}_{dm_model_name}_{k}.pth"
+                best_model = f"{freq_model_name}_{dm_model_name}_{k}.pth"
                 torch.save(model.state_dict(), os.path.join(tmp_dir.name, best_model))
                 epochs_without_improvement = 0
             else:
@@ -579,10 +579,10 @@ def main() -> None:
         # Setup the model and run the test
         trained_model = None
         if data_type != "combined":
-            trained_model = TorchvisionModel(model_name, 1, 0)
+            trained_model = TorchvisionModel(model_name, 1)
         else:
-            freq = TorchvisionModel(args.freq_model, best_k, 0)
-            dm = TorchvisionModel(args.dm_model, best_k, 0)
+            freq = TorchvisionModel(args.freq_model, best_k)
+            dm = TorchvisionModel(args.dm_model, best_k)
             trained_model = PulsarModel(freq, dm, best_k)
         
         trained_model.load_state_dict(torch.load(trained_model_path, weights_only=True))
