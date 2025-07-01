@@ -19,3 +19,5 @@ fetch/model_info.py
 tmp_code.txt
 
 ~$train_results.xlsx
+
+~$test_results.xlsx
